@@ -28,6 +28,11 @@
 **/.env.local
 **/.env.*.local
 
+# SQLite / local databases
+*.db
+*.sqlite
+*.dll
+
 # Logs
 *.log
 npm-debug.log*
