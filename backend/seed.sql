@@ -1,6 +1,6 @@
 -- ============================================================
 -- NepStyle Database Seeder — 10 records per table
--- Usage: mysql -u root -pkushal nepstyle < seed.sql
+-- Usage: mysql -u root -ppassword nepstyle < seed.sql
 -- ============================================================
 
 SET FOREIGN_KEY_CHECKS = 0;

@@ -56,10 +56,10 @@ Install these before anything else. Instructions are given for both **macOS** an
 | **macOS** | `brew install mysql` then `brew services start mysql` |
 | **Windows** | Download the MySQL Installer from [mysql.com](https://dev.mysql.com/downloads/installer/) and run the full installation. Start MySQL from the Windows Services panel or MySQL Workbench. |
 
-After installing, set the root password to `kushal` (or see [Changing DB Credentials](#changing-db-credentials)):
+After installing, set the root password to `password` (or see [Changing DB Credentials](#changing-db-credentials)):
 ```bash
 mysql -u root -p
-ALTER USER 'root'@'localhost' IDENTIFIED BY 'kushal';
+ALTER USER 'root'@'localhost' IDENTIFIED BY 'password';
 FLUSH PRIVILEGES;
 ```
 
@@ -146,7 +146,7 @@ ecommerce/
 Open a terminal and run:
 
 ```bash
-mysql -u root -pkushal -e "CREATE DATABASE IF NOT EXISTS nepstyle;"
+mysql -u root -ppassword -e "CREATE DATABASE IF NOT EXISTS nepstyle;"
 ```
 
 **Windows note:** If `mysql` is not in your PATH, open **MySQL Command Line Client** from the Start menu and run the same command.
@@ -157,10 +157,10 @@ The backend creates tables automatically when the server first starts (via `db.d
 
 ```bash
 # macOS / Linux
-mysql -u root -pkushal nepstyle < backend/seed.sql
+mysql -u root -ppassword nepstyle < backend/seed.sql
 
 # Windows (Command Prompt)
-mysql -u root -pkushal nepstyle < backend\seed.sql
+mysql -u root -ppassword nepstyle < backend\seed.sql
 ```
 
 ### Step 3 — Seed sample data (optional but recommended)
@@ -168,10 +168,10 @@ mysql -u root -pkushal nepstyle < backend\seed.sql
 **Option A — SQL file (fastest):**
 ```bash
 # macOS / Linux
-mysql -u root -pkushal nepstyle < backend/seed.sql
+mysql -u root -ppassword nepstyle < backend/seed.sql
 
 # Windows (Command Prompt)
-mysql -u root -pkushal nepstyle < backend\seed.sql
+mysql -u root -ppassword nepstyle < backend\seed.sql
 ```
 
 **Option B — Dart seeder:**
@@ -195,7 +195,7 @@ backend/lib/database/db.dart
 static const String host = 'localhost';
 static const int port = 3306;
 static const String user = 'root';
-static const String password = 'kushal';
+static const String password = 'password';
 static const String db = 'nepstyle';
 ```
 

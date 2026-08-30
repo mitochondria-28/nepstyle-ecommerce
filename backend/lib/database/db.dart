@@ -10,7 +10,7 @@ class Database {
         host: 'localhost',
         port: 3306,
         user: 'root',
-        password: 'kushal',
+        password: 'password',
         db: 'nepstyle', // Replace with your database name
       );
 
