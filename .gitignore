@@ -1,0 +1,38 @@
+# macOS
+.DS_Store
+**/.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Dart / Flutter
+**/.dart_tool/
+**/.pub/
+**/.pub-cache/
+**/build/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/pubspec.lock
+**/doc/api/
+**/*.symbols
+**/*.map.json
+
+# Node / Web
+**/node_modules/
+**/dist/
+**/.env
+**/.env.local
+**/.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Android build artifacts
+**/android/app/debug
+**/android/app/profile
+**/android/app/release
