@@ -62,7 +62,7 @@ def health():
     return HealthStatus(
         status=overall,
         version="1.0.0",
-        phase=3,
+        phase=4,
         checks=checks,
         collection=collection_info,
         latency_ms=round((time.perf_counter() - t0) * 1000, 2),

@@ -6,6 +6,7 @@ import { WishlistProvider } from './context/WishlistContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
+import AIChatWidget from './components/AIChatWidget';
 
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
@@ -48,6 +49,7 @@ export default function App() {
         <CartProvider>
           <WishlistProvider>
             <Toaster position="top-center" toastOptions={{ duration: 3000, style: { borderRadius: '12px', fontFamily: 'Inter, sans-serif', fontSize: '14px' } }} />
+            <AIChatWidget />
             <Routes>
               {/* Auth routes (no navbar/footer) */}
               <Route path="/login" element={<LoginPage />} />

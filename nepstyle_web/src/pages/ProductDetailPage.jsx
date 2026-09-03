@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Heart, Star, ArrowLeft, Plus, Minus, Check } from 'lucide-react';
+import { ShoppingCart, Heart, Star, ArrowLeft, Plus, Minus, Check, GitCompare } from 'lucide-react';
 import { fetchReviews, addReview, logActivity } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import StarRating from '../components/StarRating';
 import LoadingSpinner from '../components/LoadingSpinner';
+import ProductQA from '../components/ProductQA';
+import AICompareModal from '../components/AICompareModal';
+import { getSimilarProducts } from '../api/aiApi';
 import toast from 'react-hot-toast';
 
 export default function ProductDetailPage() {
@@ -22,8 +25,10 @@ export default function ProductDetailPage() {
   const [comment, setComment] = useState('');
   const [rating, setRating] = useState(5);
   const [submitting, setSubmitting] = useState(false);
-  const [showBuyModal, setShowBuyModal] = useState(state?.openBuyNow === true);
-  const [quantity, setQuantity] = useState(1);
+  const [showBuyModal, setShowBuyModal]     = useState(state?.openBuyNow === true);
+  const [quantity, setQuantity]             = useState(1);
+  const [showCompare, setShowCompare]       = useState(false);
+  const [similarProducts, setSimilarProducts] = useState([]);
 
   const id = product?.product_id ?? product?.productId;
   const name = product?.product_name ?? product?.productName;
@@ -44,6 +49,10 @@ export default function ProductDetailPage() {
     if (!product) { navigate('/'); return; }
     loadReviews();
     if (user) logActivity({ user_id: user.user_id, product_id: id, action_type: 'view' }).catch(() => {});
+    // Prefetch similar products for compare modal
+    getSimilarProducts(id)
+      .then((r) => setSimilarProducts(r.data.results?.map((x) => x.product || x) || []))
+      .catch(() => {});
   }, [id]);
 
   const loadReviews = async () => {
@@ -163,6 +172,14 @@ export default function ProductDetailPage() {
               Buy Now
             </button>
           </div>
+
+          {/* AI Compare button */}
+          <button
+            onClick={() => setShowCompare(true)}
+            className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-primary3/50 text-primary2 py-2.5 rounded-xl text-sm font-semibold hover:border-primary hover:text-primary hover:bg-primary4/50 transition-all"
+          >
+            <GitCompare size={16} /> Compare with Similar Products
+          </button>
         </div>
       </div>
 
@@ -225,6 +242,18 @@ export default function ProductDetailPage() {
           </div>
         )}
       </div>
+
+      {/* AI Product Q&A */}
+      <ProductQA productId={id} />
+
+      {/* AI Compare Modal */}
+      {showCompare && (
+        <AICompareModal
+          productA={product}
+          similarProducts={similarProducts}
+          onClose={() => setShowCompare(false)}
+        />
+      )}
 
       {/* Buy Now Modal */}
       {showBuyModal && (

@@ -45,7 +45,7 @@ logger = logging.getLogger("ai_service")
 # ── Lifespan ───────────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("═══ NepStyle AI Service starting (Phase 3) ═══")
+    logger.info("═══ NepStyle AI Service starting (Phase 4) ═══")
     logger.info(f"  LLM model  : {settings.gemini_model}")
     logger.info(f"  Embed model: {settings.gemini_embedding_model}")
     logger.info(f"  Vector dims: {settings.embedding_dim}")
@@ -131,7 +131,7 @@ def root():
         "service": "NepStyle AI Service",
         "version": "1.0.0",
         "status": "running",
-        "phase": 3,
+        "phase": 4,
         "docs": "/docs",
         "health": "/health",
         "endpoints": {
