@@ -213,22 +213,26 @@ CREATE TABLE IF NOT EXISTS user_activity (
 ''');
       print('Ensured "user_activity" table exists.');
       await connection.query('''
-
 CREATE TABLE IF NOT EXISTS orders (
     order_id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
+    user_id INT NULL,
+    guest_name VARCHAR(255) NULL,
+    guest_phone VARCHAR(20) NULL,
     total_amount DECIMAL(10,2) NOT NULL,
     payment_method VARCHAR(50) NOT NULL DEFAULT 'cash_on_delivery',
-     delivery_location VARCHAR(80) NOT NULL,
+    delivery_location VARCHAR(80) NOT NULL,
     order_status ENUM('pending', 'processing', 'shipped', 'delivered', 'cancelled') DEFAULT 'pending',
     order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
-
-
-
 ''');
+      // Migrate existing orders table to support guest checkout
+      try {
+        await connection.query('ALTER TABLE orders MODIFY COLUMN user_id INT NULL');
+        await connection.query('ALTER TABLE orders ADD COLUMN IF NOT EXISTS guest_name VARCHAR(255) NULL AFTER user_id');
+        await connection.query('ALTER TABLE orders ADD COLUMN IF NOT EXISTS guest_phone VARCHAR(20) NULL AFTER guest_name');
+      } catch (_) {}
 
       print('Ensured "order" table exists.');
 

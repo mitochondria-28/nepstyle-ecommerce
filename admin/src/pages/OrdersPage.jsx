@@ -56,7 +56,9 @@ export default function OrdersPage() {
       const q = search.toLowerCase();
       result = result.filter((o) =>
         String(o.order_id).includes(q) ||
-        String(o.user_id).includes(q) ||
+        String(o.user_id ?? '').includes(q) ||
+        o.guest_name?.toLowerCase().includes(q) ||
+        o.guest_phone?.toLowerCase().includes(q) ||
         o.payment_method?.toLowerCase().includes(q) ||
         o.delivery_location?.toLowerCase().includes(q)
       );
@@ -155,9 +157,17 @@ export default function OrdersPage() {
                   <tr key={order.order_id ?? i} className="hover:bg-gray-50/50 transition-colors">
                     <td className="px-6 py-4 text-sm font-bold text-gray-900">#{order.order_id}</td>
                     <td className="px-6 py-4">
-                      <span className="px-2.5 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs font-medium">
-                        User #{order.user_id}
-                      </span>
+                      {order.guest_name ? (
+                        <div>
+                          <p className="text-xs font-semibold text-gray-700">{order.guest_name}</p>
+                          <p className="text-[11px] text-gray-400">{order.guest_phone}</p>
+                          <span className="inline-block mt-0.5 px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px] font-bold">Guest</span>
+                        </div>
+                      ) : (
+                        <span className="px-2.5 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs font-medium">
+                          User #{order.user_id}
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-sm font-bold text-gray-900">
                       Rs. {Number(order.total_amount || 0).toLocaleString()}

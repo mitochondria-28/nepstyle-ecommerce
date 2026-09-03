@@ -10,8 +10,8 @@ class OrderService {
     try {
       await connection.transaction((txn) async {
         var orderResult = await txn.query(
-          'INSERT INTO orders (user_id, total_amount, payment_method, delivery_location) VALUES (?, ?, ?, ?)',
-          [order.userId, order.totalAmount, order.paymentMethod, order.deliveryLocation],
+          'INSERT INTO orders (user_id, guest_name, guest_phone, total_amount, payment_method, delivery_location) VALUES (?, ?, ?, ?, ?, ?)',
+          [order.userId, order.guestName, order.guestPhone, order.totalAmount, order.paymentMethod, order.deliveryLocation],
         );
         int orderId = orderResult.insertId!;
 
@@ -133,6 +133,8 @@ Future<List<Map<String, dynamic>>> getAllOrders() async {
       orders.add({
         'order_id': row['order_id'],
         'user_id': row['user_id'],
+        'guest_name': row['guest_name'],
+        'guest_phone': row['guest_phone'],
         'total_amount': row['total_amount'],
         'order_status': row['order_status'],
         'order_date': row['order_date'].toString(),

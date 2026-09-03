@@ -72,7 +72,6 @@ export default function ProductDetailPage() {
   };
 
   const handleBuyNow = () => {
-    if (!user) { toast.error('Please login first'); return; }
     setShowBuyModal(true);
   };
 

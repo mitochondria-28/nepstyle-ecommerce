@@ -1,6 +1,8 @@
 class Order {
   final int? orderId;
-  final int userId;
+  final int? userId;
+  final String? guestName;
+  final String? guestPhone;
   final double totalAmount;
   final String orderStatus;
   final DateTime orderDate;
@@ -9,7 +11,9 @@ class Order {
 
   Order({
     this.orderId,
-    required this.userId,
+    this.userId,
+    this.guestName,
+    this.guestPhone,
     required this.totalAmount,
     this.orderStatus = "pending",
     DateTime? orderDate,
@@ -21,6 +25,8 @@ class Order {
     return {
       'order_id': orderId,
       'user_id': userId,
+      'guest_name': guestName,
+      'guest_phone': guestPhone,
       'total_amount': totalAmount,
       'order_status': orderStatus,
       'order_date': orderDate.toIso8601String(),
@@ -33,6 +39,8 @@ class Order {
     return Order(
       orderId: map['order_id'],
       userId: map['user_id'],
+      guestName: map['guest_name'],
+      guestPhone: map['guest_phone'],
       totalAmount: map['total_amount'],
       orderStatus: map['order_status'],
       orderDate: DateTime.parse(map['order_date']),

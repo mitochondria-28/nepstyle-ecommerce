@@ -71,7 +71,7 @@ export default function App() {
               {/* Protected routes */}
               <Route path="/cart" element={<Layout><CartPage /></Layout>} />
               <Route path="/wishlist" element={<Layout><WishlistPage /></Layout>} />
-              <Route path="/checkout" element={<Layout><ProtectedRoute><CheckoutPage /></ProtectedRoute></Layout>} />
+              <Route path="/checkout" element={<Layout><CheckoutPage /></Layout>} />
               <Route path="/profile" element={<Layout><ProtectedRoute><ProfilePage /></ProtectedRoute></Layout>} />
               <Route path="/profile/edit" element={<Layout><ProtectedRoute><MyProfilePage /></ProtectedRoute></Layout>} />
               <Route path="/profile/change-password" element={<Layout><ProtectedRoute><ChangePasswordPage /></ProtectedRoute></Layout>} />

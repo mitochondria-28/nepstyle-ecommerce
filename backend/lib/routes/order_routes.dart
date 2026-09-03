@@ -18,7 +18,9 @@ class OrderRoutes {
         final data = jsonDecode(payload);
 
         final order = Order(
-          userId: data['user_id'],
+          userId: data['user_id'] as int?,
+          guestName: data['guest_name'] as String?,
+          guestPhone: data['guest_phone'] as String?,
           totalAmount: (data['total_amount'] ?? 0).toDouble(),
           paymentMethod: data['payment_method'],
           deliveryLocation: data['delivery_location'],
@@ -31,7 +33,7 @@ class OrderRoutes {
                   orderId: 0,
                   productId: item['product_id'],
                   quantity: item['quantity'],
-                  price: item['price'],
+                  price: (item['price'] as num).toDouble(),
                 ))
             .toList();
 
