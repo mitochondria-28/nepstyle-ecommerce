@@ -436,6 +436,11 @@ class _ProductDetailPageState extends State<ProductDetailPage>
                                     padding: const EdgeInsets.symmetric(
                                         vertical: 16)),
                                 onPressed: () {
+                                  if (userId == null) {
+                                    // Guest: open Buy Now flow directly
+                                    showBuyNowBottomSheet(context);
+                                    return;
+                                  }
                                   final cartItem = CartItem(
                                     userId: userId,
                                     productId: widget.product!.productId,
@@ -454,9 +459,9 @@ class _ProductDetailPageState extends State<ProductDetailPage>
                                       .read<CartBloc>()
                                       .add(AddToCartEvent(cartItem));
                                 },
-                                child: const Text(
-                                  "Add to Cart",
-                                  style: TextStyle(color: whiteColor),
+                                child: Text(
+                                  userId == null ? "Buy Now" : "Add to Cart",
+                                  style: const TextStyle(color: whiteColor),
                                 ),
                               ),
                             );

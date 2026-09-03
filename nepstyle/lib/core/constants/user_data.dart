@@ -1,4 +1,4 @@
-dynamic userId = 1;
+dynamic userId;
 dynamic userToken;
 dynamic userName = "Kushal";
 dynamic userEmail = "example@gmail.com";

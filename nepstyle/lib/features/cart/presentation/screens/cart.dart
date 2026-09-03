@@ -9,6 +9,7 @@ import '../blocs/cart_bloc/cart_bloc.dart';
 import '../blocs/cart_bloc/cart_event.dart';
 import '../blocs/cart_bloc/cart_state.dart';
 import 'cart_checkout_screen.dart';
+import 'package:nepstyle/features/authentication/presentation/screens/login_screen.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -78,7 +79,9 @@ class _CartScreenState extends State<CartScreen> {
   @override
   void initState() {
     super.initState();
-    BlocProvider.of<CartBloc>(context).add(FetchCartEvent(userId));
+    if (userId != null) {
+      BlocProvider.of<CartBloc>(context).add(FetchCartEvent(userId));
+    }
   }
 
   // Initialize selections and quantities when cart items are loaded
@@ -103,7 +106,9 @@ class _CartScreenState extends State<CartScreen> {
           style: TextStyle(color: myBlack, fontWeight: FontWeight.bold),
         ),
       ),
-      body: BlocConsumer<CartBloc, CartState>(
+      body: userId == null
+          ? _buildGuestView(context)
+          : BlocConsumer<CartBloc, CartState>(
         listener: (context, state) {
           // You can handle any state changes here if needed
         },
@@ -330,6 +335,52 @@ class _CartScreenState extends State<CartScreen> {
           }
           return const Center(child: CircularProgressIndicator());
         },
+      ),
+    );
+  }
+
+  Widget _buildGuestView(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.shopping_cart_outlined,
+                size: 80, color: Colors.grey.shade300),
+            const SizedBox(height: 20),
+            const Text(
+              "Login to view your cart",
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "Sign in to save items and checkout. You can also buy products directly without an account.",
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 28),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: () => Get.to(() => const LoginScreen()),
+                child: const Text(
+                  "Login",
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1,12 +1,16 @@
 class Order {
-  final int userId;
+  final int? userId;
+  final String? guestName;
+  final String? guestPhone;
   final double totalAmount;
   final String paymentMethod;
   final String deliveryLocation;
   final List<OrderItem> items;
 
   Order({
-    required this.userId,
+    this.userId,
+    this.guestName,
+    this.guestPhone,
     required this.totalAmount,
     required this.paymentMethod,
     required this.deliveryLocation,
@@ -16,6 +20,8 @@ class Order {
   Map<String, dynamic> toJson() {
     return {
       "user_id": userId,
+      "guest_name": guestName,
+      "guest_phone": guestPhone,
       "total_amount": totalAmount,
       "payment_method": paymentMethod,
       "delivery_location": deliveryLocation,

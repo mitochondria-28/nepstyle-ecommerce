@@ -8,7 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:get/route_manager.dart';
 import 'package:nepstyle/core/constants/colors.dart';
-import 'package:nepstyle/features/home/presentation/screens/homepage.dart';
+import 'package:nepstyle/features/home/presentation/screens/homepage.dart' show HomeScreen;
 import 'package:nepstyle/features/user%20profile/presentation/screens/order_list.dart';
 import '../../../../core/constants/user_data.dart';
 import '../../../cart/data/models/order_cart_model.dart';
@@ -22,101 +22,153 @@ class PaymentConfirmationScreen extends StatefulWidget {
   final int quantity;
   final double totalAmount;
 
-  const PaymentConfirmationScreen(
-      {super.key,
-      required this.product,
-      required this.quantity,
-      required this.totalAmount});
+  const PaymentConfirmationScreen({
+    super.key,
+    required this.product,
+    required this.quantity,
+    required this.totalAmount,
+  });
 
   @override
-  _PaymentConfirmationScreenState createState() =>
-      _PaymentConfirmationScreenState();
+  PaymentConfirmationScreenState createState() =>
+      PaymentConfirmationScreenState();
 }
 
-class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
+class PaymentConfirmationScreenState
+    extends State<PaymentConfirmationScreen> {
   String? selectedPaymentMethod;
   String? selectedLocation;
+
+  // Guest info controllers (only used when userId == null)
+  final TextEditingController _guestNameController = TextEditingController();
+  final TextEditingController _guestPhoneController = TextEditingController();
+
+  bool get _isGuest => userId == null;
 
   final List<Map<String, String>> paymentMethods = [
     {"name": "eSewa", "image": "assets/images/esewa.png"},
     {"name": "Khalti", "image": "assets/images/khalti.png"},
-    {"name": "Cash on Delivery", "image": "assets/images/cash.png"},
+    {"name": "Cash on Delivery", "image": "assets/images/cod.png"},
   ];
 
-  void _selectLocation() async {
-    // Mocking location selection, replace with Google Places API if needed
-    List<String> locations = ["Kathmandu", "Pokhara", "Lalitpur", "Bhaktapur"];
-
-    String? location = await showModalBottomSheet<String>(
-      context: context,
-      builder: (context) {
-        return Container(
-          padding: EdgeInsets.all(16),
-          child: Wrap(
-            children: locations.map((loc) {
-              return ListTile(
-                title: Text(loc),
-                onTap: () => Navigator.pop(context, loc),
-              );
-            }).toList(),
-          ),
-        );
-      },
-    );
-
-    if (location != null) {
-      setState(() {
-        selectedLocation = location;
-      });
-    }
+  @override
+  void dispose() {
+    _guestNameController.dispose();
+    _guestPhoneController.dispose();
+    super.dispose();
   }
 
-  void _openMapPicker() async {
-    final selectedLocation = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => MapLocationPicker()),
+  void _selectLocation() async {
+    const List<String> locations = [
+      "Kathmandu", "Pokhara", "Lalitpur", "Bhaktapur",
+      "Chitwan", "Biratnagar", "Butwal",
+    ];
+
+    final location = await showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40, height: 4,
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text("Select City",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+            ),
+            ...locations.map((loc) => ListTile(
+                  leading: const Icon(Icons.location_on_outlined),
+                  title: Text(loc),
+                  onTap: () => Navigator.pop(context, loc),
+                )),
+          ],
+        ),
+      ),
     );
 
-    if (selectedLocation != null) {
-      setState(() {
-        this.selectedLocation = selectedLocation["address"];
-      });
+    if (location != null) setState(() => selectedLocation = location);
+  }
+
+  bool _validateGuest() {
+    if (_isGuest) {
+      if (_guestNameController.text.trim().isEmpty) {
+        _showSnack('Please enter your full name');
+        return false;
+      }
+      final phone = _guestPhoneController.text.trim();
+      if (phone.isEmpty || !RegExp(r'^\d{7,15}$').hasMatch(phone)) {
+        _showSnack('Please enter a valid contact number');
+        return false;
+      }
     }
+    return true;
+  }
+
+  void _showSnack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: Colors.red),
+    );
   }
 
   void _confirmPurchase() {
-    if (selectedPaymentMethod != null && selectedLocation != null) {
-      final order = Order(
-        userId: userId,
-        totalAmount: widget.product.sellPrice, // Example total
-        paymentMethod: selectedPaymentMethod!,
-        deliveryLocation: selectedLocation!,
-        items: [
-          OrderItem(
-              productId: widget.product.productId,
-              quantity: widget.quantity,
-              price: widget.product.sellPrice),
-        ],
-      );
-      log(order.toJson().toString());
+    if (selectedPaymentMethod == null) {
+      _showSnack('Please select a payment method');
+      return;
+    }
+    if (selectedLocation == null) {
+      _showSnack('Please select a delivery location');
+      return;
+    }
+    if (!_validateGuest()) return;
+
+    final order = Order(
+      userId: _isGuest ? null : userId as int,
+      guestName: _isGuest ? _guestNameController.text.trim() : null,
+      guestPhone: _isGuest ? _guestPhoneController.text.trim() : null,
+      totalAmount: widget.product.sellPrice * widget.quantity,
+      paymentMethod: selectedPaymentMethod!,
+      deliveryLocation: selectedLocation!,
+      items: [
+        OrderItem(
+          productId: widget.product.productId,
+          quantity: widget.quantity,
+          price: widget.product.sellPrice,
+        ),
+      ],
+    );
+
+    if (selectedPaymentMethod == "eSewa") {
       payEsewa(order);
-      // Trigger the OrderBloc event
+    } else {
+      context.read<OrderBloc>().add(PlaceSingleOrder(order));
     }
   }
 
-  payEsewa(Order order) {
+  void payEsewa(Order order) {
     try {
       EsewaFlutterSdk.initPayment(
         esewaConfig: EsewaConfig(
           environment: Environment.test,
-          //test ko lai
-
           clientId: 'JB0BBQ4aD0UqIThFJwAKBgAXEUkEGQUBBAwdOgABHD4DChwUAB0R',
           secretId: 'BhwIWQQADhIYSxILExMcAgFXFhcOBwAKBgAXEQ==',
         ),
         esewaPayment: EsewaPayment(
           productId: widget.product.productId.toString(),
-          productName: widget.product.productName.toString(),
+          productName: widget.product.productName,
           productPrice: widget.product.sellPrice.toString(),
           callbackUrl: '',
         ),
@@ -136,119 +188,149 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
     }
   }
 
-  void verifyTransactionStatus(
-      EsewaPaymentSuccessResult result, Order order) async {
-    Map data = result.toJson();
-
-    var response = await callVerificationApi(data['refId']);
-    print("The Response Is: ${response.body}");
-    print("The Response Status Code Is: ${response.statusCode}");
-
-    if (response.statusCode.toString() == "200") {
+  void verifyTransactionStatus(EsewaPaymentSuccessResult result, Order order) async {
+    final data = result.toJson();
+    final response = await callVerificationApi(data['refId']);
+    if (!mounted) return;
+    if (response.statusCode == 200) {
       context.read<OrderBloc>().add(PlaceSingleOrder(order));
-      // paymentSuccessAlert();
     } else {
       showDialog(
-          context: context,
-          builder: (context) => const AlertDialog(
-                content: Text('Verification Failed'),
-              ));
+        context: context,
+        builder: (_) => const AlertDialog(content: Text('Verification Failed')),
+      );
     }
   }
 
-  callVerificationApi(result) async {
-    print("TxnRefd Id: " + result);
-
-    var response = await http.get(
-      Uri.parse("https://esewa.com.np/mobile/transaction?txnRefId=$result"),
+  Future<http.Response> callVerificationApi(String refId) async {
+    return http.get(
+      Uri.parse("https://esewa.com.np/mobile/transaction?txnRefId=$refId"),
       headers: {
         'Content-Type': 'application/json',
-
-        // //test
         'merchantSecret': 'BhwIWQQADhIYSxILExMcAgFXFhcOBwAKBgAXEQ==',
-        'merchantId': 'JB0BBQ4aD0UqIThFJwAKBgAXEUkEGQUBBAwdOgABHD4DChwUAB0R ',
+        'merchantId': 'JB0BBQ4aD0UqIThFJwAKBgAXEUkEGQUBBAwdOgABHD4DChwUAB0R',
       },
     );
-    print("Call Verification Api: ${response.statusCode}");
-    return response;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Confirm Order", style: TextStyle(color: Colors.black)),
+        title: const Text("Confirm Order",
+            style: TextStyle(color: Colors.black)),
         backgroundColor: Colors.white,
         elevation: 0,
-        iconTheme: IconThemeData(color: Colors.black),
+        iconTheme: const IconThemeData(color: Colors.black),
       ),
       body: BlocConsumer<OrderBloc, OrderState>(
         listener: (context, state) {
           if (state is OrderSuccess) {
-            // Show success dialog
             _showSuccessDialog();
           } else if (state is OrderFailure) {
-            // Show error dialog with the error message
-            _showErrorDialog("Error Occured While Purchasing");
+            _showErrorDialog("Error occurred while purchasing");
           }
         },
         builder: (context, state) {
           return Stack(
             children: [
-              // Main content
-              Padding(
-                padding: EdgeInsets.all(16.0),
+              SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Location Selection
+
+                    // ── Guest info (shown only when not logged in) ──────────
+                    if (_isGuest) ...[
+                      const Text("Your Information",
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      Text(
+                        "No account? No problem — fill in your details below.",
+                        style: TextStyle(
+                            fontSize: 13, color: Colors.grey.shade600),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _guestNameController,
+                        textCapitalization: TextCapitalization.words,
+                        decoration: InputDecoration(
+                          labelText: "Full Name",
+                          prefixIcon: const Icon(Icons.person_outline),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _guestPhoneController,
+                        keyboardType: TextInputType.phone,
+                        decoration: InputDecoration(
+                          labelText: "Contact Number",
+                          prefixIcon: const Icon(Icons.phone_outlined),
+                          hintText: "e.g. 9800000000",
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+
+                    // ── Delivery location ───────────────────────────────────
                     const Text("Select Location",
                         style: TextStyle(
                             fontSize: 18, fontWeight: FontWeight.bold)),
-                    SizedBox(height: 10),
+                    const SizedBox(height: 10),
                     InkWell(
                       onTap: _selectLocation,
+                      borderRadius: BorderRadius.circular(10),
                       child: Container(
-                        padding: EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade400),
+                          border: Border.all(
+                            color: selectedLocation != null
+                                ? primaryColor2
+                                : Colors.grey.shade400,
+                            width: selectedLocation != null ? 2 : 1,
+                          ),
                           borderRadius: BorderRadius.circular(10),
+                          color: selectedLocation != null
+                              ? primaryColor2.withValues(alpha: 0.05)
+                              : Colors.white,
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              selectedLocation ??
-                                  "Choose your delivery location",
+                              selectedLocation ?? "Choose your delivery city",
                               style: TextStyle(
-                                  fontSize: 16,
+                                  fontSize: 15,
                                   color: selectedLocation != null
                                       ? Colors.black
                                       : Colors.grey),
                             ),
-                            Icon(Icons.location_on, color: primaryColor2),
+                            Icon(Icons.location_on,
+                                color: selectedLocation != null
+                                    ? primaryColor2
+                                    : Colors.grey),
                           ],
                         ),
                       ),
                     ),
-                    SizedBox(height: 20),
+                    const SizedBox(height: 24),
 
-                    // Payment Method Selection
+                    // ── Payment methods ─────────────────────────────────────
                     const Text("Select Payment Method",
                         style: TextStyle(
                             fontSize: 18, fontWeight: FontWeight.bold)),
-                    SizedBox(height: 10),
-                    Column(
-                      children: paymentMethods.map((method) {
-                        return InkWell(
-                          onTap: () {
-                            setState(() {
-                              selectedPaymentMethod = method["name"];
-                            });
-                          },
+                    const SizedBox(height: 10),
+                    ...paymentMethods.map((method) => GestureDetector(
+                          onTap: () => setState(
+                              () => selectedPaymentMethod = method["name"]),
                           child: Container(
-                            margin: EdgeInsets.symmetric(vertical: 5),
-                            padding: EdgeInsets.all(12),
+                            margin: const EdgeInsets.symmetric(vertical: 5),
+                            padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
                               border: Border.all(
                                 color: selectedPaymentMethod == method["name"]
@@ -260,79 +342,102 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
                               ),
                               borderRadius: BorderRadius.circular(10),
                               color: selectedPaymentMethod == method["name"]
-                                  ? primaryColor2.withOpacity(0.1)
+                                  ? primaryColor2.withValues(alpha: 0.08)
                                   : Colors.white,
                             ),
                             child: Row(
                               children: [
-                                Image.asset(method["image"]!,
-                                    width: 40, height: 40),
-                                SizedBox(width: 15),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: Image.asset(method["image"]!,
+                                      width: 44, height: 44,
+                                      fit: BoxFit.contain),
+                                ),
+                                const SizedBox(width: 14),
                                 Text(method["name"]!,
                                     style: const TextStyle(
-                                        fontSize: 16,
+                                        fontSize: 15,
                                         fontWeight: FontWeight.w600)),
-                                Spacer(),
+                                const Spacer(),
                                 if (selectedPaymentMethod == method["name"])
                                   Icon(Icons.check_circle,
                                       color: primaryColor2),
                               ],
                             ),
                           ),
-                        );
-                      }).toList(),
-                    ),
-                    SizedBox(height: 20),
-                    const Text(
-                      "Order Details:",
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    Divider(color: Colors.grey.shade400),
-                    Text("Product Name: ${widget.product!.productName}",
-                        style: const TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.w500)),
-                    Text("Quantity: ${widget.quantity}",
-                        style: const TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.w500)),
-                    Text(
-                        "Total Amount: Rs. ${widget.product!.sellPrice * widget.quantity}",
-                        style: const TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.w500)),
-                    Spacer(),
+                        )),
+                    const SizedBox(height: 24),
 
-                    // Purchase Button
+                    // ── Order summary ───────────────────────────────────────
+                    const Text("Order Details",
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold)),
+                    Divider(color: Colors.grey.shade300),
+                    Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            widget.product.productThumbnail,
+                            width: 60, height: 60, fit: BoxFit.cover,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(widget.product.productName,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14)),
+                              const SizedBox(height: 4),
+                              Text("Qty: ${widget.quantity}",
+                                  style: TextStyle(color: Colors.grey.shade600,
+                                      fontSize: 13)),
+                              Text(
+                                "Rs. ${(widget.product.sellPrice * widget.quantity).toStringAsFixed(2)}",
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green,
+                                    fontSize: 15),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 32),
+
+                    // ── Purchase button ─────────────────────────────────────
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: selectedPaymentMethod == null
-                              ? Colors.grey
-                              : primaryColor2,
-                          padding: EdgeInsets.symmetric(vertical: 14),
+                          backgroundColor: primaryColor2,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10)),
+                              borderRadius: BorderRadius.circular(12)),
                         ),
-                        onPressed: selectedPaymentMethod == null
-                            ? null
-                            : _confirmPurchase,
-                        child: const Text("Purchase",
-                            style:
-                                TextStyle(fontSize: 18, color: Colors.white)),
+                        onPressed: _confirmPurchase,
+                        child: const Text("Confirm Order",
+                            style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600)),
                       ),
                     ),
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
 
-              // Loading Overlay
+              // Loading overlay
               if (state is OrderLoading)
                 Container(
-                  color: Colors.black
-                      .withOpacity(0.3), // Transparent black background
+                  color: Colors.black.withValues(alpha: 0.3),
                   child: const Center(
-                    child: CupertinoActivityIndicator(radius: 20),
-                  ),
+                      child: CupertinoActivityIndicator(radius: 20)),
                 ),
             ],
           );
@@ -341,45 +446,56 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
     );
   }
 
-  // Show success dialog
   void _showSuccessDialog() {
+    final isGuest = _isGuest;
+    final guestName = _guestNameController.text.trim();
+    final guestPhone = _guestPhoneController.text.trim();
+
     showDialog(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text("Order Placed Successfully"),
-          content: Text("Your order has been placed successfully."),
-          actions: <Widget>[
-            TextButton(
-              child: Text("OK"),
-              onPressed: () {
-                Get.offAll(() => const OrderListScreen());
-              },
-            ),
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green, size: 28),
+            SizedBox(width: 8),
+            Text("Order Placed!"),
           ],
-        );
-      },
+        ),
+        content: Text(
+          isGuest
+              ? "Thanks, $guestName! Your order has been placed. We'll contact you at $guestPhone once it's on the way."
+              : "Your order has been placed successfully. We'll notify you once it's on the way.",
+        ),
+        actions: [
+          if (!isGuest)
+            TextButton(
+              child: const Text("View Orders"),
+              onPressed: () => Get.offAll(() => const OrderListScreen()),
+            ),
+          TextButton(
+            child: Text(isGuest ? "Continue Shopping" : "Home"),
+            onPressed: () => Get.offAll(() => const HomeScreen()),
+          ),
+        ],
+      ),
     );
   }
 
-  // Show error dialog
-  void _showErrorDialog(String errorMessage) {
+  void _showErrorDialog(String message) {
     showDialog(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text("Order Failed"),
-          content: Text(errorMessage),
-          actions: <Widget>[
-            TextButton(
-              child: Text("OK"),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
+      builder: (_) => AlertDialog(
+        title: const Text("Order Failed"),
+        content: Text(message),
+        actions: [
+          TextButton(
+            child: const Text("OK"),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
+      ),
     );
   }
 }
