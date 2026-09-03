@@ -25,8 +25,8 @@ export function CartProvider({ children }) {
 
   const addToCart = async (product) => {
     if (!user) {
-      toast.error('Please login to add items to cart');
-      return false;
+      // Signal to the caller that the user is not logged in; caller handles UX
+      return 'guest';
     }
     try {
       const discount = product.normalPrice > product.sellPrice

@@ -22,7 +22,7 @@ export default function ProductDetailPage() {
   const [comment, setComment] = useState('');
   const [rating, setRating] = useState(5);
   const [submitting, setSubmitting] = useState(false);
-  const [showBuyModal, setShowBuyModal] = useState(false);
+  const [showBuyModal, setShowBuyModal] = useState(state?.openBuyNow === true);
   const [quantity, setQuantity] = useState(1);
 
   const id = product?.product_id ?? product?.productId;
@@ -146,11 +146,14 @@ export default function ProductDetailPage() {
 
           <div className="flex gap-3">
             <button
-              onClick={() => addToCart(product)}
+              onClick={async () => {
+                const result = await addToCart(product);
+                if (result === 'guest') setShowBuyModal(true);
+              }}
               disabled={stock === 0}
               className="flex-1 flex items-center justify-center gap-2 bg-primary text-white py-3 rounded-xl font-semibold hover:bg-primary1 transition-colors disabled:opacity-50"
             >
-              <ShoppingCart size={18} /> Add to Cart
+              <ShoppingCart size={18} /> {user ? 'Add to Cart' : 'Buy Now'}
             </button>
             <button
               onClick={handleBuyNow}

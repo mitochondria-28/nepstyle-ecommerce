@@ -2,11 +2,13 @@ import { Heart, ShoppingCart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function ProductCard({ product }) {
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const { addToWishlist, isInWishlist } = useWishlist();
+  const { user } = useAuth();
 
   const id = product.product_id ?? product.productId;
   const name = product.product_name ?? product.productName;
@@ -57,7 +59,14 @@ export default function ProductCard({ product }) {
         </div>
         <button
           className="mt-2 w-full flex items-center justify-center gap-1.5 bg-primary text-white text-xs font-semibold py-1.5 rounded-lg hover:bg-primary1 transition-colors"
-          onClick={(e) => { e.stopPropagation(); addToCart(product); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!user) {
+              navigate('/product', { state: { product, openBuyNow: true } });
+            } else {
+              addToCart(product);
+            }
+          }}
         >
           <ShoppingCart size={14} />
           Add to Cart
