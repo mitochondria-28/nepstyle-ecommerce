@@ -1,0 +1,38 @@
+import axios from 'axios';
+
+const AI_BASE_URL =
+  import.meta.env.VITE_AI_SERVICE_URL ||
+  'https://ai-service-production-7d9f.up.railway.app';
+
+const AI_KEY = import.meta.env.VITE_AI_API_KEY || '';
+
+const aiApi = axios.create({
+  baseURL: AI_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+    ...(AI_KEY ? { 'X-AI-Key': AI_KEY } : {}),
+  },
+  timeout: 20000,
+});
+
+export const aiSearch = (query, filters = {}, page = 1, pageSize = 20) =>
+  aiApi.post('/ai/search', {
+    query,
+    filters,
+    page,
+    page_size: pageSize,
+  });
+
+export const getAIHealth = () => aiApi.get('/health');
+
+export const getSimilarProducts = (productId) =>
+  aiApi.get(`/ai/products/${productId}/similar`);
+
+export const getReviewSummary = (productId) =>
+  aiApi.get(`/ai/products/${productId}/reviews/summary`);
+
+export const aiChat = (messages, userId = null) =>
+  aiApi.post('/ai/chat', { messages, user_id: userId });
+
+export const aiSupport = (message, userId = null) =>
+  aiApi.post('/ai/support', { message, user_id: userId });

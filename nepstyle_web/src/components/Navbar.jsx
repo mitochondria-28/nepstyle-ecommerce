@@ -105,7 +105,7 @@ export default function Navbar() {
               />
               <input
                 type="text"
-                placeholder="Search clothes, brands…"
+                placeholder="AI search — try 'warm jacket under 3000'…"
                 className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm placeholder:text-gray-400 focus:outline-none focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all duration-200"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
