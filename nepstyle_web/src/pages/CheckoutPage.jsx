@@ -7,9 +7,9 @@ import toast from 'react-hot-toast';
 
 const LOCATIONS = ['Kathmandu', 'Pokhara', 'Lalitpur', 'Bhaktapur', 'Chitwan', 'Biratnagar', 'Butwal'];
 const PAYMENT_METHODS = [
-  { name: 'eSewa',            icon: '💚', desc: 'Pay with eSewa digital wallet' },
-  { name: 'Khalti',           icon: '💜', desc: 'Pay with Khalti digital wallet' },
-  { name: 'Cash on Delivery', icon: '💵', desc: 'Pay when you receive the order' },
+  { name: 'eSewa',            img: '/images/esewa.png',  desc: 'Pay with eSewa digital wallet' },
+  { name: 'Khalti',           img: '/images/khalti.png', desc: 'Pay with Khalti digital wallet' },
+  { name: 'Cash on Delivery', img: '/images/cod.png',    desc: 'Pay when you receive the order' },
 ];
 
 export default function CheckoutPage() {
@@ -221,7 +221,7 @@ export default function CheckoutPage() {
                       : 'border-gray-100 hover:border-primary3'
                   }`}
                 >
-                  <span className="text-2xl">{method.icon}</span>
+                  <img src={method.img} alt={method.name} className="w-10 h-10 object-contain rounded-lg flex-shrink-0" />
                   <div className="flex-1 text-left">
                     <p className="font-semibold text-primary text-sm">{method.name}</p>
                     <p className="text-xs text-gray-400">{method.desc}</p>

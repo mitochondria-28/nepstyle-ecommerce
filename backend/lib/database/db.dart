@@ -227,12 +227,11 @@ CREATE TABLE IF NOT EXISTS orders (
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 ''');
-      // Migrate existing orders table to support guest checkout
-      try {
-        await connection.query('ALTER TABLE orders MODIFY COLUMN user_id INT NULL');
-        await connection.query('ALTER TABLE orders ADD COLUMN IF NOT EXISTS guest_name VARCHAR(255) NULL AFTER user_id');
-        await connection.query('ALTER TABLE orders ADD COLUMN IF NOT EXISTS guest_phone VARCHAR(20) NULL AFTER guest_name');
-      } catch (_) {}
+      // Idempotent migration — each statement is in its own try-catch so a
+      // "duplicate column" error on re-runs is silently ignored.
+      try { await connection.query('ALTER TABLE orders MODIFY COLUMN user_id INT NULL'); } catch (_) {}
+      try { await connection.query('ALTER TABLE orders ADD COLUMN guest_name VARCHAR(255) NULL AFTER user_id'); } catch (_) {}
+      try { await connection.query('ALTER TABLE orders ADD COLUMN guest_phone VARCHAR(20) NULL AFTER guest_name'); } catch (_) {}
 
       print('Ensured "order" table exists.');
 
