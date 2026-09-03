@@ -10,6 +10,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import ProductQA from '../components/ProductQA';
 import AICompareModal from '../components/AICompareModal';
 import SimilarProductsCarousel from '../components/SimilarProductsCarousel';
+import AIReviewSummary from '../components/AIReviewSummary';
 import { getSimilarProducts } from '../api/aiApi';
 import toast from 'react-hot-toast';
 
@@ -187,6 +188,11 @@ export default function ProductDetailPage() {
       {/* Reviews Section */}
       <div className="mt-10 bg-white rounded-2xl p-6 shadow-sm">
         <h2 className="text-xl font-bold text-primary mb-6">Reviews</h2>
+
+        {/* AI Review Summary */}
+        <div className="mb-6">
+          <AIReviewSummary productId={id} reviewCount={reviews.length} />
+        </div>
 
         {/* Write Review */}
         <form onSubmit={handleSubmitReview} className="border border-gray-100 rounded-xl p-5 mb-8 bg-appBg">
