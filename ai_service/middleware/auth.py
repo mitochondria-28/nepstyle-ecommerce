@@ -18,7 +18,8 @@ UNGUARDED = {"/health", "/docs", "/openapi.json", "/redoc"}
 
 class APIKeyMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        if request.url.path in UNGUARDED or not settings.ai_api_key:
+        # OPTIONS preflight must pass through so CORSMiddleware can respond
+        if request.method == "OPTIONS" or request.url.path in UNGUARDED or not settings.ai_api_key:
             return await call_next(request)
 
         key = request.headers.get("X-AI-Key", "")
