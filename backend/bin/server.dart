@@ -1,4 +1,5 @@
 import 'package:nepstyle_cms/database/db.dart';
+import 'package:nepstyle_cms/routes/admin_routes.dart';
 import 'package:nepstyle_cms/routes/brands_routes.dart';
 import 'package:nepstyle_cms/routes/cart_routes.dart';
 import 'package:nepstyle_cms/routes/flash_sales_product_routes.dart';
@@ -10,6 +11,7 @@ import 'package:nepstyle_cms/routes/review_routes.dart';
 import 'package:nepstyle_cms/routes/user_routes.dart';
 import 'package:nepstyle_cms/routes/category_routes.dart'; // Import category routes
 import 'package:nepstyle_cms/routes/wishlist_routes.dart';
+import 'package:nepstyle_cms/services/admin_service.dart';
 import 'package:nepstyle_cms/services/brands_service.dart';
 import 'package:nepstyle_cms/services/cart_service.dart';
 import 'package:nepstyle_cms/services/flash_sale_service.dart';
@@ -60,6 +62,7 @@ Future<void> main() async {
     print('Database connection established.');
 
     // Initialize services
+    final adminService = AdminService(connection);
     final userService = UserService(connection);
     final categoryService = CategoryService(connection);
     final categorizedProductService = CategorizedProductService(connection);
@@ -72,6 +75,7 @@ Future<void> main() async {
     final orderService = OrderService(connection);
     final reviewService = ReviewService(connection);
     // Initialize routes
+    final adminRoutes = AdminRoutes(adminService);
     final authRoutes = UserRoutes(userService);
     final categoryRoutes = CategoryRoutes(categoryService, connection);
     final categorizedProductRoutes =
@@ -87,6 +91,7 @@ Future<void> main() async {
     final reviewRoutes = ReviewRoutes(reviewService);
     // Create router and mount routes
     final app = Router();
+    app.mount('/api/admin/', adminRoutes.router);
     app.mount('/api/auth/', authRoutes.router);
     app.mount('/api/', homeRoutes.router);
     app.mount('/api/categories/', categoryRoutes.router);

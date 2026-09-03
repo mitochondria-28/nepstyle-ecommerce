@@ -266,6 +266,25 @@ CREATE TABLE IF NOT EXISTS reviews (
 );
 ''');
       print('Ensured "reviews" table exists.');
+
+      // Admin users table
+      await connection.query('''
+        CREATE TABLE IF NOT EXISTS admin_users (
+          admin_id INT AUTO_INCREMENT PRIMARY KEY,
+          fullname VARCHAR(255) NOT NULL,
+          email_address VARCHAR(255) NOT NULL UNIQUE,
+          password VARCHAR(255) NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      ''');
+      print('Ensured "admin_users" table exists.');
+
+      // Seed default admin using MySQL SHA2 — idempotent, no Dart crypto needed
+      await connection.query(
+        "INSERT IGNORE INTO admin_users (fullname, email_address, password) "
+        "VALUES ('Super Admin', 'admin@nepstyle.com', SHA2('admin123', 256))",
+      );
+      print('✅ Admin credentials ready — email: admin@nepstyle.com  password: admin123');
     } catch (e) {
       print('Error ensuring tables exist: $e');
       rethrow; // Rethrow the exception for further handling
