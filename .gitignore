@@ -28,6 +28,9 @@
 **/.env.local
 **/.env.*.local
 
+# Vercel
+**/.vercel
+
 # SQLite / local databases
 *.db
 *.sqlite
@@ -41,3 +44,4 @@ npm-debug.log*
 **/android/app/debug
 **/android/app/profile
 **/android/app/release
+.vercel
