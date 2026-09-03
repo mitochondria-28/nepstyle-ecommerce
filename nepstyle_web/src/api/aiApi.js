@@ -39,3 +39,6 @@ export const aiChat = (messages, userId = null) => {
 
 export const aiSupport = (message, userId = null) =>
   aiApi.post('/ai/support', { message, user_id: userId });
+
+export const getPersonalizedFeed = (userId, topK = 12) =>
+  aiApi.get(`/ai/personalized/${userId}`, { params: { top_k: topK } });

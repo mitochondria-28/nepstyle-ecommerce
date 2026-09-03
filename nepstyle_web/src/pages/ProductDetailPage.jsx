@@ -9,6 +9,7 @@ import StarRating from '../components/StarRating';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ProductQA from '../components/ProductQA';
 import AICompareModal from '../components/AICompareModal';
+import SimilarProductsCarousel from '../components/SimilarProductsCarousel';
 import { getSimilarProducts } from '../api/aiApi';
 import toast from 'react-hot-toast';
 
@@ -245,6 +246,9 @@ export default function ProductDetailPage() {
 
       {/* AI Product Q&A */}
       <ProductQA productId={id} />
+
+      {/* Similar Products Carousel */}
+      <SimilarProductsCarousel products={similarProducts} />
 
       {/* AI Compare Modal */}
       {showCompare && (

@@ -1,27 +1,34 @@
 """
 GET /ai/products/{id}/similar   — Similar products via Qdrant recommend
-GET /ai/personalized/{user_id}  — Personalised feed (Phase 5/7)
+GET /ai/personalized/{user_id}  — Personalised feed from user activity
 """
 import logging
+from collections import Counter
 
 from fastapi import APIRouter, HTTPException
 
 import db
 from services.rag import get_similar_products
+from services.indexer import product_vid
+from qdrant_setup import get_qdrant
+from qdrant_client.models import Filter, FieldCondition, MatchValue
+from config import settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+# ── Similar products ──────────────────────────────────────────────
+
 @router.get("/products/{product_id}/similar")
-def similar_products(product_id: int, top_k: int = 6):
+def similar_products(product_id: int, top_k: int = 8):
     try:
         results = get_similar_products(product_id, top_k=top_k)
 
-        # Enrich with full DB data if payload is sparse
         enriched = []
         for item in results:
             p = item.get("product", item)
+            # If payload is sparse, enrich from DB
             if not p.get("product_name"):
                 row = db.query_one(
                     "SELECT p.*, c.category_name, b.brand_name "
@@ -33,42 +40,159 @@ def similar_products(product_id: int, top_k: int = 6):
                 )
                 if row:
                     p = dict(row)
-            enriched.append({"product": p, "score": item.get("score", 0)})
+            enriched.append({"product": p, "score": round(item.get("score", 0), 4)})
 
-        return {
-            "success":    True,
-            "product_id": product_id,
-            "results":    enriched,
-        }
+        if enriched:
+            return {"success": True, "product_id": product_id, "results": enriched}
 
     except Exception as e:
-        logger.warning(f"Similar products failed for {product_id} (Qdrant may be empty): {e}")
-        # Fallback: same-category products from DB
+        logger.warning(f"Qdrant similar failed for {product_id}: {e}")
+
+    # DB fallback: same category, excluding self
+    try:
+        current = db.query_one(
+            "SELECT category_id FROM products WHERE product_id = %s", (product_id,)
+        )
+        if current:
+            rows = db.query_all(
+                "SELECT p.*, c.category_name, b.brand_name "
+                "FROM products p "
+                "LEFT JOIN categories c ON p.category_id = c.category_id "
+                "LEFT JOIN brands b ON p.brand_id = b.brand_id "
+                "WHERE p.category_id = %s AND p.product_id != %s "
+                "ORDER BY RAND() LIMIT %s",
+                (current["category_id"], product_id, top_k),
+            )
+            return {
+                "success":    True,
+                "product_id": product_id,
+                "results":    [{"product": dict(r), "score": 0} for r in rows],
+            }
+    except Exception as e:
+        logger.error(f"DB fallback failed for similar products: {e}")
+
+    return {"success": True, "product_id": product_id, "results": []}
+
+
+# ── Personalised feed ─────────────────────────────────────────────
+
+@router.get("/personalized/{user_id}")
+def personalized(user_id: int, top_k: int = 12):
+    """
+    Build a personalised product feed from the user's activity log.
+
+    Strategy:
+    1. Fetch recently viewed / wishlisted product IDs
+    2. Find the most-viewed categories/brands
+    3. Use Qdrant recommend() seeded with viewed product vectors
+    4. Deduplicate and enrich from DB
+    5. Fallback to popular-in-favourite-category if Qdrant is empty
+    """
+    try:
+        # Gather activity signals from user_activity table
+        activity = db.query_all(
+            "SELECT product_id, action_type "
+            "FROM user_activity "
+            "WHERE user_id = %s "
+            "ORDER BY timestamp DESC LIMIT 30",
+            (user_id,),
+        ) or []
+    except Exception:
+        # Table might not exist — try wishlists as signal
+        activity = []
+
+    wishlist_pids = []
+    try:
+        wl = db.query_all(
+            "SELECT product_id FROM wishlist WHERE user_id = %s LIMIT 10", (user_id,)
+        ) or []
+        wishlist_pids = [r["product_id"] for r in wl]
+    except Exception:
+        pass
+
+    # Collect seed product IDs (recent views + wishlist), deduplicated
+    viewed_pids = [r["product_id"] for r in activity if r.get("product_id")]
+    seed_pids   = list(dict.fromkeys(wishlist_pids + viewed_pids))[:8]
+
+    already_seen = set(seed_pids)
+
+    # ── Try Qdrant recommend ───────────────────────────────────────
+    if seed_pids:
         try:
-            current = db.query_one("SELECT category_id FROM products WHERE product_id = %s", (product_id,))
-            if current:
-                rows = db.query_all(
+            positive_ids = [product_vid(pid) for pid in seed_pids[:4]]
+            qdrant_results = get_qdrant().recommend(
+                collection_name=settings.qdrant_collection,
+                positive=positive_ids,
+                query_filter=Filter(
+                    must=[FieldCondition(key="type", match=MatchValue(value="product"))],
+                ),
+                limit=top_k + len(already_seen),
+                with_payload=True,
+            )
+            recs = []
+            for r in qdrant_results:
+                pid = r.payload.get("product_id")
+                if pid and pid not in already_seen:
+                    already_seen.add(pid)
+                    recs.append({"product": r.payload, "score": round(r.score, 4), "reason": "based_on_history"})
+                    if len(recs) >= top_k:
+                        break
+
+            if recs:
+                return {
+                    "success": True,
+                    "user_id": user_id,
+                    "strategy": "qdrant_recommend",
+                    "results": recs,
+                }
+        except Exception as e:
+            logger.warning(f"Qdrant personalised failed for user {user_id}: {e}")
+
+    # ── DB fallback: most-viewed category ─────────────────────────
+    try:
+        if seed_pids:
+            rows = db.query_all(
+                "SELECT category_id FROM products WHERE product_id IN %s",
+                (tuple(seed_pids),),
+            )
+            if rows:
+                cat_counts = Counter(r["category_id"] for r in rows)
+                top_cat    = cat_counts.most_common(1)[0][0]
+
+                products = db.query_all(
                     "SELECT p.*, c.category_name, b.brand_name "
                     "FROM products p "
                     "LEFT JOIN categories c ON p.category_id = c.category_id "
                     "LEFT JOIN brands b ON p.brand_id = b.brand_id "
-                    "WHERE p.category_id = %s AND p.product_id != %s LIMIT %s",
-                    (current["category_id"], product_id, top_k),
+                    "WHERE p.category_id = %s "
+                    "AND p.product_id NOT IN %s "
+                    "ORDER BY RAND() LIMIT %s",
+                    (top_cat, tuple(already_seen) if already_seen else (0,), top_k),
                 )
-                return {
-                    "success":    True,
-                    "product_id": product_id,
-                    "results":    [{"product": dict(r), "score": 0} for r in rows],
-                }
-        except Exception:
-            pass
-        return {"success": True, "product_id": product_id, "results": []}
+                if products:
+                    return {
+                        "success":  True,
+                        "user_id":  user_id,
+                        "strategy": "category_fallback",
+                        "results":  [{"product": dict(p), "score": 0, "reason": "similar_to_interests"} for p in products],
+                    }
 
+        # Ultimate fallback: featured / sale products
+        products = db.query_all(
+            "SELECT p.*, c.category_name, b.brand_name "
+            "FROM products p "
+            "LEFT JOIN categories c ON p.category_id = c.category_id "
+            "LEFT JOIN brands b ON p.brand_id = b.brand_id "
+            "ORDER BY RAND() LIMIT %s",
+            (top_k,),
+        )
+        return {
+            "success":  True,
+            "user_id":  user_id,
+            "strategy": "popular",
+            "results":  [{"product": dict(p), "score": 0, "reason": "popular"} for p in products],
+        }
 
-@router.get("/personalized/{user_id}")
-def personalized(user_id: int):
-    return {
-        "success": False,
-        "phase":   5,
-        "message": "Personalised recommendations will be available in Phase 5.",
-    }
+    except Exception as e:
+        logger.exception(f"Personalised fallback failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

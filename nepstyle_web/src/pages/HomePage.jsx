@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  ChevronRight, Zap, Shield, RotateCcw, Truck, Star,
+  ChevronRight, ChevronLeft, Zap, Shield, RotateCcw, Truck, Star,
   ArrowRight, Flame, Sparkles, TrendingUp,
 } from 'lucide-react';
 import { fetchHome } from '../api';
@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import ProductCard from '../components/ProductCard';
 import { SkeletonCard } from '../components/LoadingSpinner';
+import { getPersonalizedFeed } from '../api/aiApi';
 import toast from 'react-hot-toast';
 
 /* ── Hero slides ──────────────────────────────────────────────── */
@@ -108,9 +109,21 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [slideIdx, setSlideIdx] = useState(0);
   const [slideKey, setSlideKey] = useState(0);
+  const [personalizedFeed, setPersonalizedFeed] = useState([]);
   const countdown = useCountdown(7);
 
-  useEffect(() => { loadData(); if (user) loadCart(); }, [user]);
+  useEffect(() => {
+    loadData();
+    if (user) {
+      loadCart();
+      getPersonalizedFeed(user.user_id)
+        .then((r) => {
+          const items = r.data?.results?.map((x) => x.product ?? x) || [];
+          setPersonalizedFeed(items);
+        })
+        .catch(() => {});
+    }
+  }, [user]);
 
   useEffect(() => {
     const t = setInterval(() => {
@@ -219,6 +232,11 @@ export default function HomePage() {
         {/* ── FLASH SALE ──────────────────────────────────────── */}
         {home?.flashSaleProducts?.length > 0 && (
           <FlashSaleSection products={home.flashSaleProducts} countdown={countdown} navigate={navigate} />
+        )}
+
+        {/* ── AI PERSONALISED FEED ─────────────────────────── */}
+        {user && personalizedFeed.length > 0 && (
+          <PersonalisedSection products={personalizedFeed} navigate={navigate} />
         )}
 
         {/* ── BRANDS MARQUEE ──────────────────────────────────── */}
@@ -472,6 +490,104 @@ function ProductsSection({ title, subtitle, icon, products, viewAll }) {
           </Link>
         </div>
       )}
+    </section>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────── */
+/* AI Personalised "Picked For You" section                        */
+/* ─────────────────────────────────────────────────────────────── */
+function PersonalisedSection({ products, navigate }) {
+  const ref      = useReveal();
+  const scrollRef = useRef(null);
+
+  const scroll = (dir) => {
+    scrollRef.current?.scrollBy({ left: dir * 240, behavior: 'smooth' });
+  };
+
+  return (
+    <section ref={ref} className="reveal">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-primary rounded-xl flex items-center justify-center">
+            <Sparkles size={18} className="text-white" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-primary flex items-center gap-2">
+              Picked For You
+              <span className="text-xs bg-gradient-to-r from-amber-400 to-primary text-white font-bold px-2 py-0.5 rounded-full">⚡ AI</span>
+            </h2>
+            <p className="text-sm text-gray-400">Personalised based on your browsing history</p>
+          </div>
+        </div>
+        <div className="flex gap-1">
+          <button
+            onClick={() => scroll(-1)}
+            className="w-8 h-8 bg-primary4 text-primary rounded-full flex items-center justify-center hover:bg-primary3 transition-colors"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <button
+            onClick={() => scroll(1)}
+            className="w-8 h-8 bg-primary4 text-primary rounded-full flex items-center justify-center hover:bg-primary3 transition-colors"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      </div>
+
+      {/* Horizontal scroll carousel */}
+      <div
+        ref={scrollRef}
+        className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        {products.map((p, i) => {
+          const pid       = p?.product_id ?? p?.productId;
+          const name      = p?.product_name ?? p?.productName ?? 'Product';
+          const thumb     = p?.product_thumbnail ?? p?.productThumbnail;
+          const sellPrice = p?.sell_price ?? p?.sellPrice ?? 0;
+          const normPrice = p?.normal_price ?? p?.normalPrice ?? 0;
+          const brand     = p?.brand_name ?? p?.brandName ?? '';
+          const discount  = normPrice > sellPrice
+            ? Math.round(((normPrice - sellPrice) / normPrice) * 100)
+            : 0;
+
+          return (
+            <div
+              key={pid ?? i}
+              onClick={() => navigate('/product', { state: { product: p } })}
+              style={{ animationDelay: `${i * 50}ms` }}
+              className="group flex-none w-44 sm:w-52 snap-start cursor-pointer bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md hover:-translate-y-1 transition-all duration-200 animate-fade-up"
+            >
+              <div className="relative h-40 sm:h-48 overflow-hidden bg-gray-50">
+                <img
+                  src={thumb}
+                  alt={name}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  onError={(e) => { e.target.src = 'https://via.placeholder.com/200x200?text=No+Image'; }}
+                />
+                {discount > 0 && (
+                  <span className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                    -{discount}%
+                  </span>
+                )}
+              </div>
+              <div className="p-3">
+                {brand && <p className="text-xs text-primary1 font-medium mb-0.5 truncate">{brand}</p>}
+                <p className="text-sm font-semibold text-primary leading-tight line-clamp-2 mb-1">{name}</p>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-sm font-bold text-moneyColor">Rs.{Number(sellPrice).toFixed(0)}</span>
+                  {discount > 0 && (
+                    <span className="text-xs text-gray-400 line-through">Rs.{Number(normPrice).toFixed(0)}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </section>
   );
 }
