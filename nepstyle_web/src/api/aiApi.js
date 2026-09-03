@@ -31,8 +31,11 @@ export const getSimilarProducts = (productId) =>
 export const getReviewSummary = (productId) =>
   aiApi.get(`/ai/products/${productId}/reviews/summary`);
 
-export const aiChat = (messages, userId = null) =>
-  aiApi.post('/ai/chat', { messages, user_id: userId });
+export const aiChat = (messages, userId = null) => {
+  const message = messages[messages.length - 1]?.content ?? '';
+  const history = messages.slice(0, -1);
+  return aiApi.post('/ai/chat', { message, history, user_id: userId });
+};
 
 export const aiSupport = (message, userId = null) =>
   aiApi.post('/ai/support', { message, user_id: userId });
