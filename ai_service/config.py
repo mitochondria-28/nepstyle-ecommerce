@@ -22,7 +22,7 @@ class Settings(BaseSettings):
 
     # ── Gemini ──────────────────────────────────────────────────
     gemini_api_key: str
-    gemini_model: str = "gemini-1.5-flash"
+    gemini_model: str = "gemini-2.5-flash"
     gemini_embedding_model: str = "gemini-embedding-001"
     # gemini-embedding-001 produces 3072-dimensional vectors
     embedding_dim: int = 3072
