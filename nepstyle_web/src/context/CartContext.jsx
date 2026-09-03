@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback } from 'react';
-import { fetchCart, addToCart as apiAddToCart } from '../api';
+import { fetchCart, addToCart as apiAddToCart, logActivity } from '../api';
 import { useAuth } from './AuthContext';
 import toast from 'react-hot-toast';
 
@@ -46,6 +46,7 @@ export function CartProvider({ children }) {
       });
       toast.success('Added to cart!');
       await loadCart();
+      logActivity({ user_id: user.user_id, product_id: product.productId || product.product_id, action_type: 'cart' }).catch(() => {});
       return true;
     } catch {
       toast.error('Failed to add to cart');

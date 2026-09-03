@@ -88,17 +88,19 @@ def personalized(user_id: int, top_k: int = 12):
     4. Deduplicate and enrich from DB
     5. Fallback to popular-in-favourite-category if Qdrant is empty
     """
+    # Signal weights: purchase > wishlist > cart > view
+    WEIGHTS = {"purchase": 4, "wishlist": 3, "cart": 2, "view": 1}
+
     try:
-        # Gather activity signals from user_activity table
+        # Weighted activity signals — aggregate per product
         activity = db.query_all(
             "SELECT product_id, action_type "
             "FROM user_activity "
-            "WHERE user_id = %s "
-            "ORDER BY timestamp DESC LIMIT 30",
+            "WHERE user_id = %s AND product_id IS NOT NULL "
+            "ORDER BY timestamp DESC LIMIT 50",
             (user_id,),
         ) or []
     except Exception:
-        # Table might not exist — try wishlists as signal
         activity = []
 
     wishlist_pids = []
@@ -110,9 +112,17 @@ def personalized(user_id: int, top_k: int = 12):
     except Exception:
         pass
 
-    # Collect seed product IDs (recent views + wishlist), deduplicated
-    viewed_pids = [r["product_id"] for r in activity if r.get("product_id")]
-    seed_pids   = list(dict.fromkeys(wishlist_pids + viewed_pids))[:8]
+    # Build weighted score per product and pick top seeds
+    scores: dict[int, int] = {}
+    for row in activity:
+        pid = row.get("product_id")
+        if pid:
+            scores[pid] = scores.get(pid, 0) + WEIGHTS.get(row.get("action_type", "view"), 1)
+    for pid in wishlist_pids:
+        scores[pid] = scores.get(pid, 0) + WEIGHTS["wishlist"]
+
+    # Sort by score desc, take top 8 as seeds
+    seed_pids = [pid for pid, _ in sorted(scores.items(), key=lambda x: x[1], reverse=True)][:8]
 
     already_seen = set(seed_pids)
 

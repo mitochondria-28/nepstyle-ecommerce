@@ -26,6 +26,7 @@ from routers import (
     search,
     recommendations,
     reviews,
+    signals,
     compare,
     product_qa,
     order_assistant,
@@ -45,7 +46,7 @@ logger = logging.getLogger("ai_service")
 # ── Lifespan ───────────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("═══ NepStyle AI Service starting (Phase 4) ═══")
+    logger.info("═══ NepStyle AI Service starting (Phase 7) ═══")
     logger.info(f"  LLM model  : {settings.gemini_model}")
     logger.info(f"  Embed model: {settings.gemini_embedding_model}")
     logger.info(f"  Vector dims: {settings.embedding_dim}")
@@ -115,8 +116,9 @@ async def global_exception_handler(request: Request, exc: Exception):
 app.include_router(health.router)                                   # GET  /health
 app.include_router(chat.router,             prefix="/ai")           # POST /ai/chat
 app.include_router(search.router,           prefix="/ai")           # POST /ai/search
-app.include_router(recommendations.router,  prefix="/ai")           # GET  /ai/products/:id/similar
+app.include_router(recommendations.router,  prefix="/ai")           # GET  /ai/products/:id/similar + /ai/personalized/:uid
 app.include_router(reviews.router,          prefix="/ai")           # GET  /ai/products/:id/reviews/summary
+app.include_router(signals.router,          prefix="/ai")           # GET  /ai/trending + /ai/recently-viewed/:uid
 app.include_router(compare.router,          prefix="/ai")           # POST /ai/compare
 app.include_router(product_qa.router,       prefix="/ai")           # POST /ai/product/:id/ask
 app.include_router(order_assistant.router,  prefix="/ai")           # POST /ai/order-assistant

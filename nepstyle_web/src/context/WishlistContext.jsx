@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback } from 'react';
-import { fetchWishlist, addToWishlist as apiAddToWishlist, removeFromWishlist as apiRemove } from '../api';
+import { fetchWishlist, addToWishlist as apiAddToWishlist, removeFromWishlist as apiRemove, logActivity } from '../api';
 import { useAuth } from './AuthContext';
 import toast from 'react-hot-toast';
 
@@ -41,6 +41,7 @@ export function WishlistProvider({ children }) {
       });
       toast.success('Added to wishlist!');
       await loadWishlist();
+      logActivity({ user_id: user.user_id, product_id: product.productId || product.product_id, action_type: 'wishlist' }).catch(() => {});
     } catch {
       toast.error('Failed to add to wishlist');
     }

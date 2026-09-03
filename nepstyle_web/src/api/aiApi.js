@@ -42,3 +42,9 @@ export const aiSupport = (message, userId = null) =>
 
 export const getPersonalizedFeed = (userId, topK = 12) =>
   aiApi.get(`/ai/personalized/${userId}`, { params: { top_k: topK } });
+
+export const getTrending = (limit = 12) =>
+  aiApi.get('/ai/trending', { params: { limit } });
+
+export const getRecentlyViewed = (userId, limit = 8) =>
+  aiApi.get(`/ai/recently-viewed/${userId}`, { params: { limit } });

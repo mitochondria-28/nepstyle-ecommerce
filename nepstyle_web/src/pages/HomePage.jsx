@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import ProductCard from '../components/ProductCard';
 import { SkeletonCard } from '../components/LoadingSpinner';
-import { getPersonalizedFeed } from '../api/aiApi';
+import { getPersonalizedFeed, getTrending, getRecentlyViewed } from '../api/aiApi';
 import toast from 'react-hot-toast';
 
 /* ── Hero slides ──────────────────────────────────────────────── */
@@ -110,17 +110,24 @@ export default function HomePage() {
   const [slideIdx, setSlideIdx] = useState(0);
   const [slideKey, setSlideKey] = useState(0);
   const [personalizedFeed, setPersonalizedFeed] = useState([]);
+  const [trendingProducts, setTrendingProducts] = useState([]);
+  const [recentlyViewed,   setRecentlyViewed]   = useState([]);
   const countdown = useCountdown(7);
 
   useEffect(() => {
     loadData();
+    // Trending visible to everyone
+    getTrending(12)
+      .then((r) => setTrendingProducts(r.data?.results?.map((x) => x.product ?? x) || []))
+      .catch(() => {});
+
     if (user) {
       loadCart();
       getPersonalizedFeed(user.user_id)
-        .then((r) => {
-          const items = r.data?.results?.map((x) => x.product ?? x) || [];
-          setPersonalizedFeed(items);
-        })
+        .then((r) => setPersonalizedFeed(r.data?.results?.map((x) => x.product ?? x) || []))
+        .catch(() => {});
+      getRecentlyViewed(user.user_id, 8)
+        .then((r) => setRecentlyViewed(r.data?.results?.map((x) => x.product ?? x) || []))
         .catch(() => {});
     }
   }, [user]);
@@ -234,9 +241,19 @@ export default function HomePage() {
           <FlashSaleSection products={home.flashSaleProducts} countdown={countdown} navigate={navigate} />
         )}
 
+        {/* ── RECENTLY VIEWED ─────────────────────────────────── */}
+        {user && recentlyViewed.length > 0 && (
+          <RecentlyViewedSection products={recentlyViewed} navigate={navigate} />
+        )}
+
         {/* ── AI PERSONALISED FEED ─────────────────────────── */}
         {user && personalizedFeed.length > 0 && (
           <PersonalisedSection products={personalizedFeed} navigate={navigate} />
+        )}
+
+        {/* ── TRENDING NOW ────────────────────────────────────── */}
+        {trendingProducts.length > 0 && (
+          <TrendingSection products={trendingProducts} navigate={navigate} />
         )}
 
         {/* ── BRANDS MARQUEE ──────────────────────────────────── */}
@@ -490,6 +507,143 @@ function ProductsSection({ title, subtitle, icon, products, viewAll }) {
           </Link>
         </div>
       )}
+    </section>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────── */
+/* Horizontal mini-card used by both Trending & Recently Viewed   */
+/* ─────────────────────────────────────────────────────────────── */
+function MiniCard({ p, navigate, badge }) {
+  const name      = p?.product_name ?? p?.productName ?? 'Product';
+  const thumb     = p?.product_thumbnail ?? p?.productThumbnail;
+  const sellPrice = p?.sell_price ?? p?.sellPrice ?? 0;
+  const normPrice = p?.normal_price ?? p?.normalPrice ?? 0;
+  const brandName = p?.brand_name ?? p?.brandName ?? '';
+  const discount  = normPrice > sellPrice ? Math.round(((normPrice - sellPrice) / normPrice) * 100) : 0;
+
+  return (
+    <div
+      onClick={() => navigate('/product', { state: { product: p } })}
+      className="group flex-none w-40 sm:w-48 snap-start cursor-pointer bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md hover:-translate-y-1 transition-all duration-200"
+    >
+      <div className="relative h-36 sm:h-44 overflow-hidden bg-gray-50">
+        <img
+          src={thumb}
+          alt={name}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          onError={(e) => { e.target.src = 'https://via.placeholder.com/200x200?text=No+Image'; }}
+        />
+        {badge && (
+          <span className="absolute top-2 left-2 text-xs font-bold px-2 py-0.5 rounded-full bg-black/60 text-white backdrop-blur-sm">
+            {badge}
+          </span>
+        )}
+        {discount > 0 && (
+          <span className="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+            -{discount}%
+          </span>
+        )}
+      </div>
+      <div className="p-2.5">
+        {brandName && <p className="text-xs text-primary1 font-medium truncate">{brandName}</p>}
+        <p className="text-xs font-semibold text-primary leading-tight line-clamp-2 mt-0.5">{name}</p>
+        <p className="text-xs font-bold text-moneyColor mt-1">Rs.{Number(sellPrice).toFixed(0)}</p>
+      </div>
+    </div>
+  );
+}
+
+function HorizontalShelf({ children, scrollRef }) {
+  const scroll = (dir) => scrollRef.current?.scrollBy({ left: dir * 220, behavior: 'smooth' });
+  return (
+    <div className="relative">
+      <button
+        onClick={() => scroll(-1)}
+        className="absolute -left-3 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-white border border-gray-200 shadow-md rounded-full flex items-center justify-center hover:bg-primary4 transition-colors"
+      >
+        <ChevronLeft size={15} className="text-primary" />
+      </button>
+      <div
+        ref={scrollRef}
+        className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory px-1"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        {children}
+      </div>
+      <button
+        onClick={() => scroll(1)}
+        className="absolute -right-3 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-white border border-gray-200 shadow-md rounded-full flex items-center justify-center hover:bg-primary4 transition-colors"
+      >
+        <ChevronRight size={15} className="text-primary" />
+      </button>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────── */
+/* Recently Viewed section (logged-in users)                       */
+/* ─────────────────────────────────────────────────────────────── */
+function RecentlyViewedSection({ products, navigate }) {
+  const ref       = useReveal();
+  const scrollRef = useRef(null);
+  return (
+    <section ref={ref} className="reveal">
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-primary4 rounded-xl flex items-center justify-center">
+            <TrendingUp size={18} className="text-primary" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-primary">Recently Viewed</h2>
+            <p className="text-sm text-gray-400">Pick up where you left off</p>
+          </div>
+        </div>
+      </div>
+      <HorizontalShelf scrollRef={scrollRef}>
+        {products.map((p, i) => (
+          <MiniCard key={p?.product_id ?? i} p={p} navigate={navigate} />
+        ))}
+      </HorizontalShelf>
+    </section>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────── */
+/* Trending Now section (all users)                                */
+/* ─────────────────────────────────────────────────────────────── */
+function TrendingSection({ products, navigate }) {
+  const ref       = useReveal();
+  const scrollRef = useRef(null);
+  return (
+    <section ref={ref} className="reveal">
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-red-500 rounded-xl flex items-center justify-center">
+            <Flame size={18} className="text-white" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-primary flex items-center gap-2">
+              Trending Now
+              <span className="text-xs bg-red-100 text-red-600 font-bold px-2 py-0.5 rounded-full animate-pulse">🔥 Hot</span>
+            </h2>
+            <p className="text-sm text-gray-400">Most popular with shoppers this week</p>
+          </div>
+        </div>
+        <a href="/products" className="text-sm font-semibold text-primary2 hover:text-primary flex items-center gap-1">
+          View all <ChevronRight size={15} />
+        </a>
+      </div>
+      <HorizontalShelf scrollRef={scrollRef}>
+        {products.map((p, i) => (
+          <MiniCard
+            key={p?.product_id ?? i}
+            p={p}
+            navigate={navigate}
+            badge={i === 0 ? '🥇 #1' : i === 1 ? '🥈 #2' : i === 2 ? '🥉 #3' : `#${i + 1}`}
+          />
+        ))}
+      </HorizontalShelf>
     </section>
   );
 }
