@@ -111,8 +111,9 @@ Future<void> main() async {
         .addMiddleware(corsHeaders()) // Add enhanced CORS middleware
         .addHandler(app);
 
-    // Start the server
-    final server = await io.serve(handler, '0.0.0.0', 8080);
+    // Start the server (PORT env var is set by Railway/cloud; default 8080 locally)
+    final port = int.tryParse(Platform.environment['PORT'] ?? '') ?? 8080;
+    final server = await io.serve(handler, '0.0.0.0', port);
     print('Server running on http://${server.address.host}:${server.port}');
 
     // Handle application shutdown signals

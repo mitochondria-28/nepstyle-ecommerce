@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:mysql1/mysql1.dart';
 
 class Database {
@@ -7,11 +8,11 @@ class Database {
   static Future<MySqlConnection> getConnection() async {
     if (_connection == null) {
       final settings = ConnectionSettings(
-        host: 'localhost',
-        port: 3306,
-        user: 'root',
-        password: 'password',
-        db: 'nepstyle', // Replace with your database name
+        host: Platform.environment['MYSQLHOST'] ?? Platform.environment['DB_HOST'] ?? 'localhost',
+        port: int.tryParse(Platform.environment['MYSQLPORT'] ?? Platform.environment['DB_PORT'] ?? '') ?? 3306,
+        user: Platform.environment['MYSQLUSER'] ?? Platform.environment['DB_USER'] ?? 'root',
+        password: Platform.environment['MYSQLPASSWORD'] ?? Platform.environment['DB_PASSWORD'] ?? 'password',
+        db: Platform.environment['MYSQLDATABASE'] ?? Platform.environment['DB_NAME'] ?? 'nepstyle',
       );
 
       try {

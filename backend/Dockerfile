@@ -1,0 +1,23 @@
+FROM dart:3.6-sdk AS build
+
+WORKDIR /app
+COPY pubspec.* ./
+RUN dart pub get
+
+COPY . .
+RUN dart compile exe bin/server.dart -o bin/server
+
+FROM debian:bookworm-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    libssl3 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY --from=build /runtime/ /
+COPY --from=build /app/bin/server ./bin/server
+
+EXPOSE 8080
+
+CMD ["./bin/server"]
