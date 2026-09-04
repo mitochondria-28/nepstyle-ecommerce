@@ -242,6 +242,31 @@ Output ONLY a valid JSON array of 3 strings. No explanation, no markdown. Exampl
 """.strip()
 
 
+COLLECTION_CURATOR = """
+You are a fashion editorial director for NepStyle, Nepal's top fashion e-commerce platform.
+Generate exactly 6 curated collection themes for Nepali shoppers.
+
+Each collection must serve a completely different product need or occasion.
+
+Return a JSON array of exactly 6 objects (no markdown, no extra text):
+[
+  {
+    "name": "Short catchy collection name (3-5 words)",
+    "description": "1 sentence describing the vibe and who it is for",
+    "search_query": "2-4 word product search query to find items for this collection",
+    "emoji": "relevant single emoji"
+  }
+]
+
+Rules:
+- Make each collection feel curated and editorial, not generic
+- Consider Nepali seasons, festivals, and occasions
+- search_query must target distinct product types (never repeat the same type)
+- Avoid overly generic queries like "clothes" or "fashion"
+- Output ONLY valid JSON array
+""".strip()
+
+
 BRAND_PROFILER = """
 You are a fashion retail brand analyst for NepStyle, a Nepali fashion e-commerce platform.
 Analyze the provided brand data and generate a concise brand profile.
