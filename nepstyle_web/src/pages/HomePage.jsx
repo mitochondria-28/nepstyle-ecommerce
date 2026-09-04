@@ -229,6 +229,9 @@ export default function HomePage() {
       {/* ── TRUST PILLARS ─────────────────────────────────────── */}
       <TrustBar />
 
+      {/* ── STYLE QUIZ TEASER ─────────────────────────────────── */}
+      <StyleQuizBanner />
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 space-y-16 py-12">
 
         {/* ── CATEGORIES ──────────────────────────────────────── */}
@@ -289,6 +292,38 @@ export default function HomePage() {
         {/* ── CTA BANNER ──────────────────────────────────────── */}
         <CTABanner />
 
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────── */
+/* Style Quiz banner                                               */
+/* ─────────────────────────────────────────────────────────────── */
+function StyleQuizBanner() {
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-8">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-primary via-primary1 to-primary2 text-white px-6 sm:px-10 py-8 flex flex-col sm:flex-row items-center gap-5 shadow-lg">
+        {/* Decorative circles */}
+        <div className="absolute -right-8 -top-8 w-40 h-40 bg-white/5 rounded-full pointer-events-none" />
+        <div className="absolute -right-4 -bottom-10 w-28 h-28 bg-white/5 rounded-full pointer-events-none" />
+
+        <div className="text-4xl sm:text-5xl flex-shrink-0">🎯</div>
+
+        <div className="flex-1 text-center sm:text-left">
+          <div className="inline-flex items-center gap-1.5 text-[10px] bg-white/20 px-2.5 py-1 rounded-full font-bold mb-2">
+            <Sparkles size={9} /> 30-Second AI Quiz
+          </div>
+          <h2 className="text-xl sm:text-2xl font-black mb-1 leading-tight">Discover Your Personal Style</h2>
+          <p className="text-white/75 text-sm">Answer 3 quick questions and get personalized fashion picks curated by AI.</p>
+        </div>
+
+        <Link
+          to="/style-quiz"
+          className="flex-shrink-0 flex items-center gap-2 bg-white text-primary font-bold text-sm px-6 py-3 rounded-2xl hover:bg-white/90 hover:scale-105 transition-all duration-200 shadow-lg"
+        >
+          Start Quiz <ArrowRight size={15} />
+        </Link>
       </div>
     </div>
   );

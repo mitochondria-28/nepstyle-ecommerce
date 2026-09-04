@@ -34,6 +34,7 @@ import TermsConditionsPage from './pages/TermsConditionsPage';
 import SupportPage from './pages/SupportPage';
 import DealsPage from './pages/DealsPage';
 import CollectionsPage from './pages/CollectionsPage';
+import StyleQuizPage from './pages/StyleQuizPage';
 
 function Layout({ children }) {
   return (
@@ -74,7 +75,8 @@ export default function App() {
               <Route path="/terms" element={<Layout><TermsConditionsPage /></Layout>} />
               <Route path="/support" element={<Layout><SupportPage /></Layout>} />
               <Route path="/deals"       element={<Layout><DealsPage /></Layout>} />
-              <Route path="/collections" element={<Layout><CollectionsPage /></Layout>} />
+              <Route path="/collections"  element={<Layout><CollectionsPage /></Layout>} />
+              <Route path="/style-quiz"  element={<Layout><StyleQuizPage /></Layout>} />
 
               {/* Protected routes */}
               <Route path="/cart" element={<Layout><CartPage /></Layout>} />

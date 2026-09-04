@@ -84,3 +84,6 @@ export const getCategoryInsights = (catId) =>
 
 export const getCollections = () =>
   aiApi.get('/ai/collections');
+
+export const submitStyleQuiz = ({ style, budget, categories, userId = null }) =>
+  aiApi.post('/ai/style-quiz', { style, budget, categories, user_id: userId });

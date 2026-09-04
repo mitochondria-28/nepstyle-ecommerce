@@ -18,6 +18,7 @@ export default function Footer() {
             <li><Link to="/cart" className="hover:text-white transition-colors">Cart</Link></li>
             <li><Link to="/deals" className="hover:text-white transition-colors">🔥 Deals</Link></li>
             <li><Link to="/collections" className="hover:text-white transition-colors">✨ Collections</Link></li>
+            <li><Link to="/style-quiz" className="hover:text-white transition-colors">🎯 Style Quiz</Link></li>
           </ul>
         </div>
         <div>
