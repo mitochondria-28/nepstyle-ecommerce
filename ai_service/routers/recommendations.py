@@ -11,7 +11,7 @@ import db
 from services.rag import get_similar_products
 from services.indexer import product_vid
 from qdrant_setup import get_qdrant
-from qdrant_client.models import Filter, FieldCondition, MatchValue
+from qdrant_client.models import Filter, FieldCondition, MatchValue, RecommendQuery, RecommendInput
 from config import settings
 
 logger = logging.getLogger(__name__)
@@ -130,9 +130,9 @@ def personalized(user_id: int, top_k: int = 12):
     if seed_pids:
         try:
             positive_ids = [product_vid(pid) for pid in seed_pids[:4]]
-            qdrant_results = get_qdrant().recommend(
+            qdrant_result = get_qdrant().query_points(
                 collection_name=settings.qdrant_collection,
-                positive=positive_ids,
+                query=RecommendQuery(recommend=RecommendInput(positive=positive_ids, negative=[])),
                 query_filter=Filter(
                     must=[FieldCondition(key="type", match=MatchValue(value="product"))],
                 ),
@@ -140,7 +140,7 @@ def personalized(user_id: int, top_k: int = 12):
                 with_payload=True,
             )
             recs = []
-            for r in qdrant_results:
+            for r in qdrant_result.points:
                 pid = r.payload.get("product_id")
                 if pid and pid not in already_seen:
                     already_seen.add(pid)

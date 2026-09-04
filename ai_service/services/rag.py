@@ -14,7 +14,7 @@ Context formatters:
 """
 import logging
 
-from qdrant_client.models import Filter, FieldCondition, MatchValue, Range
+from qdrant_client.models import Filter, FieldCondition, MatchValue, Range, RecommendQuery, RecommendInput
 
 from config import settings
 from qdrant_setup import get_qdrant
@@ -81,10 +81,9 @@ def get_similar_products(product_id: int, top_k: int = 6) -> list[dict]:
     Excludes the product itself.
     """
     vid = product_vid(product_id)
-    results = get_qdrant().recommend(
+    result = get_qdrant().query_points(
         collection_name=settings.qdrant_collection,
-        positive=[vid],
-        negative=[],
+        query=RecommendQuery(recommend=RecommendInput(positive=[vid], negative=[])),
         query_filter=Filter(
             must=[FieldCondition(key="type", match=MatchValue(value="product"))],
             must_not=[FieldCondition(key="product_id", match=MatchValue(value=product_id))],
@@ -92,7 +91,7 @@ def get_similar_products(product_id: int, top_k: int = 6) -> list[dict]:
         limit=top_k,
         with_payload=True,
     )
-    return [{"product": r.payload, "score": round(r.score, 3)} for r in results]
+    return [{"product": r.payload, "score": round(r.score, 3)} for r in result.points]
 
 
 def get_product_reviews(product_id: int, top_k: int = 20) -> list[dict]:
