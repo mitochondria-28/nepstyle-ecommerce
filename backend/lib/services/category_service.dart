@@ -1,8 +1,9 @@
 import 'package:mysql1/mysql1.dart';
+import '../database/db.dart';
 import '../models/categories_model.dart';
 
 class CategoryService {
-  final MySqlConnection connection;
+  final ManagedConnection connection;
 
   CategoryService(this.connection);
 

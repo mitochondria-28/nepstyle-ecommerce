@@ -1,9 +1,10 @@
 import 'package:mysql1/mysql1.dart';
+import '../database/db.dart';
 
 import '../models/product_category_model.dart';
 
 class CategorizedProductService {
-  final MySqlConnection connection;
+  final ManagedConnection connection;
 
   CategorizedProductService(this.connection);
 

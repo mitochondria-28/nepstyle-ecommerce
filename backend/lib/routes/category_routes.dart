@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:mime/mime.dart';
 import 'package:mysql1/mysql1.dart';
+import '../database/db.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 import '../models/categories_model.dart';
@@ -9,7 +10,7 @@ import '../services/category_service.dart';
 
 class CategoryRoutes {
   final CategoryService categoryService;
-  final MySqlConnection connection;
+  final ManagedConnection connection;
 
   CategoryRoutes(this.categoryService, this.connection);
 

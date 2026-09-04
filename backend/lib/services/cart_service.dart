@@ -1,8 +1,9 @@
 import 'package:mysql1/mysql1.dart';
+import '../database/db.dart';
 import '../models/cart_model.dart';
 
 class CartService {
-  final MySqlConnection connection;
+  final ManagedConnection connection;
 
   CartService(this.connection);
 

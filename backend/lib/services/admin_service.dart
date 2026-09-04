@@ -1,13 +1,14 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:mysql1/mysql1.dart';
+import '../database/db.dart';
 import '../models/admin_model.dart';
 
 String _sha256(String input) =>
     sha256.convert(utf8.encode(input)).toString();
 
 class AdminService {
-  final MySqlConnection connection;
+  final ManagedConnection connection;
 
   AdminService(this.connection);
 

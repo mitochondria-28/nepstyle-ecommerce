@@ -1,8 +1,9 @@
 import 'package:mysql1/mysql1.dart';
+import '../database/db.dart';
 import 'package:nepstyle_cms/services/product_service.dart';
 
 class HomeService {
-  final MySqlConnection connection;
+  final ManagedConnection connection;
   final ProductService productService;
 
   HomeService(this.connection, this.productService);

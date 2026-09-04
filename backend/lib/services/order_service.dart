@@ -1,8 +1,9 @@
 import 'package:mysql1/mysql1.dart';
+import '../database/db.dart';
 import '../models/order_model.dart';
 
 class OrderService {
-  final MySqlConnection connection;
+  final ManagedConnection connection;
 
   OrderService(this.connection);
 

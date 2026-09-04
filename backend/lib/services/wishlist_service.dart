@@ -1,8 +1,9 @@
 import 'package:mysql1/mysql1.dart';
+import '../database/db.dart';
 import '../models/wishlist_model.dart';
 
 class WishlistService {
-  final MySqlConnection connection;
+  final ManagedConnection connection;
 
   WishlistService(this.connection);
 

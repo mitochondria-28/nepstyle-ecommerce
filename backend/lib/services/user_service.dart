@@ -1,10 +1,11 @@
 import 'package:mysql1/mysql1.dart';
+import '../database/db.dart';
 
 import '../models/user_model.dart';
 import 'package:bcrypt/bcrypt.dart';
 
 class UserService {
-  final MySqlConnection connection;
+  final ManagedConnection connection;
 
   UserService(this.connection);
 

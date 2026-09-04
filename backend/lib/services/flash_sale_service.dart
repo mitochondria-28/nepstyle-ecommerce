@@ -1,9 +1,10 @@
 import 'package:mysql1/mysql1.dart';
+import '../database/db.dart';
 
 import '../models/flash_sale_products_model.dart';
 
 class FlashSaleProductService {
-  final MySqlConnection connection;
+  final ManagedConnection connection;
 
   FlashSaleProductService(this.connection);
 

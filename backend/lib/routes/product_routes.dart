@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:mysql1/mysql1.dart';
+import '../database/db.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 
@@ -10,7 +11,7 @@ class ProductRoutes {
   final ProductService productService;
 
   ProductRoutes(this.productService, this.connection);
-  final MySqlConnection connection;
+  final ManagedConnection connection;
   Router get router {
     final router = Router();
 

@@ -1,8 +1,9 @@
 import 'package:mysql1/mysql1.dart';
+import '../database/db.dart';
 import '../models/brand_model.dart';
 
 class BrandService {
-  final MySqlConnection connection;
+  final ManagedConnection connection;
 
   BrandService(this.connection);
 

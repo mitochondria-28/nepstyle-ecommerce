@@ -1,7 +1,8 @@
 import 'package:mysql1/mysql1.dart';
+import '../database/db.dart';
 
 class ReviewService {
-  final MySqlConnection connection;
+  final ManagedConnection connection;
 
   ReviewService(this.connection);
 
