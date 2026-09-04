@@ -81,3 +81,6 @@ export const getBrandProfile = (brandId) =>
 
 export const getCategoryInsights = (catId) =>
   aiApi.get(`/ai/categories/${catId}/insights`);
+
+export const getCollections = () =>
+  aiApi.get('/ai/collections');

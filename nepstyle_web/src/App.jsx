@@ -33,6 +33,7 @@ import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsConditionsPage from './pages/TermsConditionsPage';
 import SupportPage from './pages/SupportPage';
 import DealsPage from './pages/DealsPage';
+import CollectionsPage from './pages/CollectionsPage';
 
 function Layout({ children }) {
   return (
@@ -72,7 +73,8 @@ export default function App() {
               <Route path="/privacy" element={<Layout><PrivacyPolicyPage /></Layout>} />
               <Route path="/terms" element={<Layout><TermsConditionsPage /></Layout>} />
               <Route path="/support" element={<Layout><SupportPage /></Layout>} />
-              <Route path="/deals"   element={<Layout><DealsPage /></Layout>} />
+              <Route path="/deals"       element={<Layout><DealsPage /></Layout>} />
+              <Route path="/collections" element={<Layout><CollectionsPage /></Layout>} />
 
               {/* Protected routes */}
               <Route path="/cart" element={<Layout><CartPage /></Layout>} />

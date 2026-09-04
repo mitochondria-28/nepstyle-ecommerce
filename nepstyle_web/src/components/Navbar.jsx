@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   ShoppingCart, Heart, User, Search, Menu, X,
   LogOut, Package, ChevronDown, Home, Grid3X3, Tag,
-  ShoppingBag, Sparkles, Flame,
+  ShoppingBag, Sparkles, Flame, Layers,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
@@ -13,7 +13,8 @@ const NAV_LINKS = [
   { to: '/categories', label: 'Categories', icon: Grid3X3    },
   { to: '/brands',     label: 'Brands',     icon: Tag        },
   { to: '/products',   label: 'Products',   icon: ShoppingBag },
-  { to: '/deals',      label: 'Deals',      icon: Flame,  highlight: true },
+  { to: '/deals',       label: 'Deals',       icon: Flame,  highlight: true },
+  { to: '/collections', label: 'Collections', icon: Layers               },
 ];
 
 export default function Navbar() {
