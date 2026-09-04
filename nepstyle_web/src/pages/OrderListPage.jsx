@@ -4,6 +4,7 @@ import { Package, ArrowLeft, ChevronRight } from 'lucide-react';
 import { fetchUserOrders } from '../api';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
+import AIOrderAssistant from '../components/AIOrderAssistant';
 
 const STATUS_COLORS = {
   pending: 'bg-yellow-100 text-yellow-700',
@@ -41,6 +42,13 @@ export default function OrderListPage() {
         <ArrowLeft size={18} /> Back
       </button>
       <h1 className="text-2xl font-bold text-primary mb-6">My Orders</h1>
+
+      {/* AI Order Assistant */}
+      {user && (
+        <div className="mb-5">
+          <AIOrderAssistant userId={user.user_id} orderCount={orders.length} />
+        </div>
+      )}
 
       {orders.length === 0 ? (
         <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4 bg-white rounded-2xl shadow-sm py-16">
