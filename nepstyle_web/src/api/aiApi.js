@@ -48,3 +48,12 @@ export const getTrending = (limit = 12) =>
 
 export const getRecentlyViewed = (userId, limit = 8) =>
   aiApi.get(`/ai/recently-viewed/${userId}`, { params: { limit } });
+
+export const aiOrderAssistant = (message, userId, history = []) =>
+  aiApi.post('/ai/order-assistant', { message, user_id: userId, history });
+
+export const aiSupportChat = (message, userId = null, history = []) =>
+  aiApi.post('/ai/support', { message, user_id: userId, history });
+
+export const aiAgent = (message, userId = null, history = []) =>
+  aiApi.post('/ai/agent', { message, user_id: userId, history });
