@@ -12,6 +12,7 @@ import AICompareModal from '../components/AICompareModal';
 import SimilarProductsCarousel from '../components/SimilarProductsCarousel';
 import AIReviewSummary from '../components/AIReviewSummary';
 import CompleteTheLook from '../components/CompleteTheLook';
+import SizeAdvisor from '../components/SizeAdvisor';
 import { getSimilarProducts } from '../api/aiApi';
 import toast from 'react-hot-toast';
 
@@ -155,6 +156,9 @@ export default function ProductDetailPage() {
             <span className={`w-2 h-2 rounded-full ${stock > 0 ? 'bg-green-500' : 'bg-red-500'}`} />
             <span className="text-sm text-gray-600">{stock > 0 ? `In Stock (${stock} available)` : 'Out of Stock'}</span>
           </div>
+
+          {/* AI Size Advisor */}
+          <SizeAdvisor productId={id} />
 
           <div className="flex gap-3">
             <button

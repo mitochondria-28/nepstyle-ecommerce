@@ -69,3 +69,6 @@ export const getWishlistInsights = (items, userId = null) =>
 
 export const getSearchSuggestions = (query) =>
   aiApi.post('/ai/search-suggest', { query });
+
+export const getSizeAdvice = (productId, { height_cm, weight_kg, usual_size, gender }) =>
+  aiApi.post(`/ai/products/${productId}/size-advice`, { height_cm, weight_kg, usual_size, gender });
