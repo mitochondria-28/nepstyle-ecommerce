@@ -33,6 +33,7 @@ from routers import (
     support,
     agent,
     stylist,
+    insights,
     admin,
 )
 
@@ -48,7 +49,7 @@ logger = logging.getLogger("ai_service")
 # ── Lifespan ───────────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("═══ NepStyle AI Service starting (Phase 10) ═══")
+    logger.info("═══ NepStyle AI Service starting (Phase 11) ═══")
     logger.info(f"  LLM model  : {settings.gemini_model}")
     logger.info(f"  Embed model: {settings.gemini_embedding_model}")
     logger.info(f"  Vector dims: {settings.embedding_dim}")
@@ -127,6 +128,7 @@ app.include_router(order_assistant.router,  prefix="/ai")           # POST /ai/o
 app.include_router(support.router,          prefix="/ai")           # POST /ai/support
 app.include_router(agent.router,            prefix="/ai")           # POST /ai/agent (Phase 9)
 app.include_router(stylist.router,          prefix="/ai")           # GET  /ai/products/:id/complete-look + POST /ai/cart-recommendations (Phase 10)
+app.include_router(insights.router,         prefix="/ai")           # POST /ai/wishlist-insights + POST /ai/search-suggest (Phase 11)
 app.include_router(admin.router,            prefix="/ai")           # POST /ai/admin/*
 
 
