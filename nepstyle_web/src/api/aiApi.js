@@ -63,3 +63,9 @@ export const getCompleteLook = (productId) =>
 
 export const getCartRecommendations = (productNames, excludeIds = []) =>
   aiApi.post('/ai/cart-recommendations', { product_names: productNames, exclude_ids: excludeIds });
+
+export const getWishlistInsights = (items, userId = null) =>
+  aiApi.post('/ai/wishlist-insights', { items, user_id: userId });
+
+export const getSearchSuggestions = (query) =>
+  aiApi.post('/ai/search-suggest', { query });

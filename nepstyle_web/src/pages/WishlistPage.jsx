@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useCart } from '../context/CartContext';
 import LoadingSpinner from '../components/LoadingSpinner';
+import WishlistInsights from '../components/WishlistInsights';
 
 export default function WishlistPage() {
   const { user } = useAuth();
@@ -30,6 +31,9 @@ export default function WishlistPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
       <h1 className="text-2xl font-bold text-primary mb-6">My Wishlist</h1>
+
+      {/* AI Wishlist Insights */}
+      {wishlistItems.length > 0 && <WishlistInsights items={wishlistItems} />}
 
       {wishlistItems.length === 0 ? (
         <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4 bg-white rounded-2xl shadow-sm py-16">

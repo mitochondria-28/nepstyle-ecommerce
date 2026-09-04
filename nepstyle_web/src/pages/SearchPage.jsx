@@ -5,7 +5,7 @@ import {
   AlertCircle, Package, TrendingUp, Zap,
 } from 'lucide-react';
 import { searchProducts } from '../api';
-import { aiSearch } from '../api/aiApi';
+import { aiSearch, getSearchSuggestions } from '../api/aiApi';
 import { fetchAllCategories } from '../api';
 import { fetchAllBrands } from '../api';
 import ProductCard from '../components/ProductCard';
@@ -37,6 +37,7 @@ export default function SearchPage() {
   const [isAI, setIsAI]               = useState(false);
   const [total, setTotal]             = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
 
   const [categories, setCategories] = useState([]);
   const [brands, setBrands]         = useState([]);
@@ -80,6 +81,7 @@ export default function SearchPage() {
     setLoading(true);
     setSearched(true);
     setIsAI(false);
+    setSuggestions([]);
 
     const f = buildFilters();
 
@@ -91,6 +93,11 @@ export default function SearchPage() {
         setProducts(data.results.map((r) => r.product || r));
         setTotal(data.total || data.results.length);
         setIsAI(true);
+        // Fire refinement suggestions in parallel — non-blocking
+        setSuggestions([]);
+        getSearchSuggestions(q)
+          .then(r => setSuggestions(r.data.suggestions || []))
+          .catch(() => setSuggestions([]));
         return;
       }
     } catch {
@@ -253,6 +260,24 @@ export default function SearchPage() {
                 className={`transition-transform duration-200 ${filtersOpen ? 'rotate-180' : ''}`}
               />
             </button>
+          </div>
+        )}
+
+        {/* ── AI Refinement Chips ───────────────────────────── */}
+        {searched && !loading && suggestions.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 mb-5 -mt-1">
+            <span className="text-[11px] text-gray-400 font-medium flex items-center gap-1">
+              <Sparkles size={10} className="text-primary" /> Refine:
+            </span>
+            {suggestions.map((s) => (
+              <button
+                key={s}
+                onClick={() => { setInput(s); setSearchParams({ q: s }); setSuggestions([]); }}
+                className="text-xs bg-white border border-gray-200 hover:border-primary hover:bg-primary4 hover:text-primary text-gray-600 px-3 py-1.5 rounded-full transition-all font-medium shadow-sm"
+              >
+                {s}
+              </button>
+            ))}
           </div>
         )}
 
