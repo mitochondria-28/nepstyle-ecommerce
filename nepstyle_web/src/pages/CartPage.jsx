@@ -4,6 +4,7 @@ import { Trash2, ShoppingBag, Plus, Minus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import LoadingSpinner from '../components/LoadingSpinner';
+import CartRecommendations from '../components/CartRecommendations';
 
 export default function CartPage() {
   const { user } = useAuth();
@@ -73,6 +74,7 @@ export default function CartPage() {
           <button onClick={() => navigate('/')} className="btn-primary px-8 py-3 rounded-xl">Shop Now</button>
         </div>
       ) : (
+        <>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-3">
             {/* Select All */}
@@ -122,6 +124,9 @@ export default function CartPage() {
             </div>
           </div>
         </div>
+        {/* AI Cart Recommendations */}
+        <CartRecommendations cartItems={cartItems} />
+        </>
       )}
     </div>
   );

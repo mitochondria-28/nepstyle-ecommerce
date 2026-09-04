@@ -11,6 +11,7 @@ import ProductQA from '../components/ProductQA';
 import AICompareModal from '../components/AICompareModal';
 import SimilarProductsCarousel from '../components/SimilarProductsCarousel';
 import AIReviewSummary from '../components/AIReviewSummary';
+import CompleteTheLook from '../components/CompleteTheLook';
 import { getSimilarProducts } from '../api/aiApi';
 import toast from 'react-hot-toast';
 
@@ -255,6 +256,9 @@ export default function ProductDetailPage() {
 
       {/* Similar Products Carousel */}
       <SimilarProductsCarousel products={similarProducts} />
+
+      {/* Complete the Look */}
+      <CompleteTheLook product={product} />
 
       {/* AI Compare Modal */}
       {showCompare && (

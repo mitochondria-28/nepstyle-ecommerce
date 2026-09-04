@@ -57,3 +57,9 @@ export const aiSupportChat = (message, userId = null, history = []) =>
 
 export const aiAgent = (message, userId = null, history = []) =>
   aiApi.post('/ai/agent', { message, user_id: userId, history });
+
+export const getCompleteLook = (productId) =>
+  aiApi.get(`/ai/products/${productId}/complete-look`);
+
+export const getCartRecommendations = (productNames, excludeIds = []) =>
+  aiApi.post('/ai/cart-recommendations', { product_names: productNames, exclude_ids: excludeIds });
