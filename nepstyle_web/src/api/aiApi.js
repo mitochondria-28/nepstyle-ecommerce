@@ -75,3 +75,9 @@ export const getSizeAdvice = (productId, { height_cm, weight_kg, usual_size, gen
 
 export const getSmartDeals = (limit = 24) =>
   aiApi.get('/ai/smart-deals', { params: { limit } });
+
+export const getBrandProfile = (brandId) =>
+  aiApi.get(`/ai/brands/${brandId}/profile`);
+
+export const getCategoryInsights = (catId) =>
+  aiApi.get(`/ai/categories/${catId}/insights`);

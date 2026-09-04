@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import { fetchProductsByBrand, fetchAllBrands } from '../api';
 import ProductCard from '../components/ProductCard';
 import { SkeletonCard } from '../components/LoadingSpinner';
+import BrandAIProfile from '../components/BrandAIProfile';
 
 export default function BrandProductsPage() {
   const { id } = useParams();
@@ -45,6 +46,8 @@ export default function BrandProductsPage() {
       )}
 
       {!brand && <h1 className="text-2xl font-bold text-primary mb-6">Brand Products</h1>}
+
+      <BrandAIProfile brandId={Number(id)} />
 
       {loading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">

@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import { fetchProductsByCategory, fetchAllCategories } from '../api';
 import ProductCard from '../components/ProductCard';
 import { SkeletonCard } from '../components/LoadingSpinner';
+import CategoryAIInsights from '../components/CategoryAIInsights';
 
 export default function CategoryProductsPage() {
   const { id } = useParams();
@@ -46,6 +47,8 @@ export default function CategoryProductsPage() {
       )}
 
       {!category && <h1 className="text-2xl font-bold text-primary mb-6">Category Products</h1>}
+
+      <CategoryAIInsights catId={Number(id)} />
 
       {loading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
