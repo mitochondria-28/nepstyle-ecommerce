@@ -113,6 +113,12 @@ class ProductService {
     LIMIT 10;
     ''');
 
-    return results.map((row) => row.fields).toList();
+    return results.map((row) {
+      final map = Map<String, dynamic>.from(row.fields);
+      map.forEach((key, value) {
+        if (value is DateTime) map[key] = value.toIso8601String();
+      });
+      return map;
+    }).toList();
   }
 }
