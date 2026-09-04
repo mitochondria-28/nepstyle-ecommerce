@@ -72,3 +72,6 @@ export const getSearchSuggestions = (query) =>
 
 export const getSizeAdvice = (productId, { height_cm, weight_kg, usual_size, gender }) =>
   aiApi.post(`/ai/products/${productId}/size-advice`, { height_cm, weight_kg, usual_size, gender });
+
+export const getSmartDeals = (limit = 24) =>
+  aiApi.get('/ai/smart-deals', { params: { limit } });
