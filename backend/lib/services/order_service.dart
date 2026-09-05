@@ -5,7 +5,21 @@ import '../models/order_model.dart';
 class OrderService {
   final ManagedConnection connection;
 
-  OrderService(this.connection);
+  OrderService(this.connection) {
+    _migrateOrderStatusColumn();
+  }
+
+  // Converts order_status from ENUM to VARCHAR so any status value is accepted.
+  Future<void> _migrateOrderStatusColumn() async {
+    try {
+      await connection.query(
+        "ALTER TABLE orders MODIFY COLUMN order_status VARCHAR(50) NOT NULL DEFAULT 'pending'",
+      );
+      print('orders.order_status migrated to VARCHAR(50)');
+    } catch (e) {
+      // Likely already VARCHAR — safe to ignore
+    }
+  }
 
   Future<int> placeSingleOrder(Order order, List<OrderItem> items) async {
     try {
