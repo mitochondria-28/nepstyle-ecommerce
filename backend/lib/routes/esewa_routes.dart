@@ -12,19 +12,19 @@ class EsewaRoutes {
 
   EsewaRoutes(this.esewaService, this.orderService);
 
-  // Backend base URL for callback (eSewa server → our backend)
-  static String get _callbackUrl =>
-      Platform.environment['ESEWA_CALLBACK_URL'] ??
-      'http://localhost:8080/api/esewa/callback';
+  // Backend's own public URL — eSewa redirects the browser here after payment
+  static String get _backendUrl =>
+      Platform.environment['BACKEND_URL'] ??
+      'https://dart-backend-production-359e.up.railway.app';
 
-  // Frontend base URL for redirect (eSewa browser → our web app)
-  static String get _frontendBaseUrl =>
-      Platform.environment['FRONTEND_URL'] ?? 'http://localhost:3000';
+  // Frontend URL — backend redirects browser here after verifying payment
+  static String get _frontendUrl =>
+      Platform.environment['FRONTEND_URL'] ?? 'https://nepstyleweb.vercel.app';
 
   Router get router {
     final r = Router();
 
-    // POST /api/esewa/initiate — create order + book eSewa payment
+    // POST /api/esewa/initiate — create order + get eSewa payment URL
     r.post('/initiate', (Request request) async {
       try {
         final payload = await request.readAsString();
@@ -36,6 +36,7 @@ class EsewaRoutes {
         if (items.isEmpty) {
           return Response.badRequest(
             body: jsonEncode({'status': false, 'message': 'No items provided'}),
+            headers: {'Content-Type': 'application/json'},
           );
         }
 
@@ -64,23 +65,20 @@ class EsewaRoutes {
           return Response.internalServerError(
             body: jsonEncode(
                 {'status': false, 'message': 'Failed to create order'}),
+            headers: {'Content-Type': 'application/json'},
           );
         }
 
-        final redirectUrl =
-            '$_frontendBaseUrl/esewa-return?order_id=$orderId';
-
-        final properties = <String, dynamic>{
-          'customer_id': data['user_id']?.toString() ?? 'guest',
-          'remarks': 'NepStyle Order #$orderId',
-        };
+        // eSewa redirects browser to these after payment (both success + failure
+        // hit the same verify handler — we never trust eSewa's choice, only the
+        // status API response)
+        final verifyUrl = '$_backendUrl/api/esewa/verify?order_id=$orderId';
 
         final esewaResult = await esewaService.initiatePayment(
           amount: order.totalAmount,
           orderId: orderId,
-          callbackUrl: _callbackUrl,
-          redirectUrl: redirectUrl,
-          properties: properties,
+          successUrl: verifyUrl,
+          failureUrl: verifyUrl,
         );
 
         if (!(esewaResult['success'] as bool)) {
@@ -88,20 +86,19 @@ class EsewaRoutes {
           return Response.badRequest(
             body: jsonEncode({
               'status': false,
-              'message': esewaResult['error'],
+              'message': esewaResult['error'] ?? 'eSewa initiation failed',
             }),
+            headers: {'Content-Type': 'application/json'},
           );
         }
 
-        final bookingId = esewaResult['booking_id'] as String;
-
-        // Store cart metadata so we can clear cart after successful payment
+        // Store cart metadata for cleanup after successful payment
         if (data['user_id'] != null && cartType != 'direct') {
           final selectedIds = data['selected_product_ids'] != null
               ? jsonEncode(data['selected_product_ids'])
               : null;
           await esewaService.saveCartInfo(
-            bookingId,
+            orderId,
             cartType,
             data['user_id'] as int,
             selectedIds,
@@ -111,9 +108,8 @@ class EsewaRoutes {
         return Response.ok(
           jsonEncode({
             'status': true,
-            'booking_id': bookingId,
-            'correlation_id': esewaResult['correlation_id'],
-            'deeplink': esewaResult['deeplink'],
+            'payment_url': esewaResult['payment_url'],
+            'transaction_uuid': esewaResult['transaction_uuid'],
             'order_id': orderId,
           }),
           headers: {'Content-Type': 'application/json'},
@@ -121,141 +117,43 @@ class EsewaRoutes {
       } catch (e) {
         print('eSewa /initiate error: $e');
         return Response.internalServerError(
-          body:
-              jsonEncode({'status': false, 'message': 'Internal server error'}),
+          body: jsonEncode(
+              {'status': false, 'message': 'Internal server error'}),
+          headers: {'Content-Type': 'application/json'},
         );
       }
     });
 
-    // POST /api/esewa/verify — frontend calls this after redirect to confirm payment
-    r.post('/verify', (Request request) async {
+    // GET /api/esewa/verify?order_id=X
+    // eSewa redirects the browser here (both success and failure).
+    // We verify with eSewa's status API, then redirect the browser to frontend.
+    r.get('/verify', (Request request) async {
+      final orderIdStr = request.url.queryParameters['order_id'];
+      final orderId = int.tryParse(orderIdStr ?? '');
+
+      if (orderId == null) {
+        return Response.found('$_frontendUrl/esewa-return?payment=failed&reason=invalid_order');
+      }
+
       try {
-        final payload = await request.readAsString();
-        final data = jsonDecode(payload) as Map<String, dynamic>;
+        final result = await esewaService.verifyPayment(orderId);
 
-        final orderId = data['order_id'] as int;
-
-        // Lookup esewa payment by order_id
-        final esewaPayment =
-            await esewaService.getEsewaPaymentByOrderId(orderId);
-        if (esewaPayment == null) {
-          return Response.notFound(
-            jsonEncode({'status': false, 'message': 'Payment record not found'}),
+        if (result['success'] == true) {
+          await esewaService.clearCartIfNeeded(orderId);
+          return Response.found(
+            '$_frontendUrl/esewa-return?order_id=$orderId&payment=success',
           );
-        }
-
-        final bookingId = esewaPayment['booking_id'] as String;
-        final correlationId = esewaPayment['correlation_id'] as String;
-
-        final statusResult =
-            await esewaService.checkStatus(bookingId, correlationId);
-
-        if (statusResult['code'] == 'IP-201') {
-          final status = statusResult['data']['status'] as String;
-
-          await esewaService.updatePaymentStatus(bookingId, status);
-
-          if (status == 'SUCCESS') {
-            await esewaService.updateOrderStatus(orderId, 'pending');
-            await esewaService.clearCartIfNeeded(bookingId);
-            return Response.ok(jsonEncode({
-              'status': true,
-              'payment_status': 'SUCCESS',
-              'order_id': orderId,
-              'message': 'Payment verified',
-            }));
-          } else {
-            await esewaService.updateOrderStatus(orderId, status.toLowerCase());
-            return Response.ok(jsonEncode({
-              'status': false,
-              'payment_status': status,
-              'order_id': orderId,
-              'message': 'Payment $status',
-            }));
-          }
         } else {
-          return Response.ok(jsonEncode({
-            'status': false,
-            'payment_status': 'UNKNOWN',
-            'order_id': orderId,
-            'message': 'Could not verify payment status',
-          }));
+          final status = (result['status'] as String? ?? 'failed').toLowerCase();
+          return Response.found(
+            '$_frontendUrl/esewa-return?order_id=$orderId&payment=failed&reason=$status',
+          );
         }
       } catch (e) {
         print('eSewa /verify error: $e');
-        return Response.internalServerError(
-          body:
-              jsonEncode({'status': false, 'message': 'Internal server error'}),
+        return Response.found(
+          '$_frontendUrl/esewa-return?order_id=$orderId&payment=failed&reason=error',
         );
-      }
-    });
-
-    // POST /api/esewa/callback — webhook called by eSewa server after payment
-    r.post('/callback', (Request request) async {
-      try {
-        final payload = await request.readAsString();
-        final data = jsonDecode(payload) as Map<String, dynamic>;
-
-        if (!esewaService.verifyCallbackSignature(data)) {
-          return Response.forbidden(
-            jsonEncode({'error': 'Invalid signature'}),
-          );
-        }
-
-        final correlationId = data['correlation_id'] as String;
-        final status = data['status'] as String;
-
-        final esewaPayment =
-            await esewaService.getEsewaPaymentByCorrelationId(correlationId);
-        if (esewaPayment == null) {
-          return Response.notFound(
-            jsonEncode({'error': 'Payment not found'}),
-          );
-        }
-
-        final orderId = esewaPayment['order_id'] as int;
-        final bookingId = esewaPayment['booking_id'] as String;
-
-        await esewaService.updatePaymentStatus(bookingId, status);
-
-        if (status == 'SUCCESS') {
-          await esewaService.updateOrderStatus(orderId, 'pending');
-          await esewaService.clearCartIfNeeded(bookingId);
-        } else {
-          await esewaService.updateOrderStatus(orderId, status.toLowerCase());
-        }
-
-        return Response.ok(jsonEncode({'message': 'Callback processed'}));
-      } catch (e) {
-        print('eSewa /callback error: $e');
-        return Response.internalServerError();
-      }
-    });
-
-    // POST /api/esewa/cancel — cancel a pending booking
-    r.post('/cancel', (Request request) async {
-      try {
-        final payload = await request.readAsString();
-        final data = jsonDecode(payload) as Map<String, dynamic>;
-
-        final bookingId = data['booking_id'] as String;
-        final orderId = data['order_id'] as int;
-
-        final result = await esewaService.cancelPayment(bookingId);
-
-        if (result['code'] == 'IP-210') {
-          await esewaService.updatePaymentStatus(bookingId, 'CANCELED');
-          await esewaService.updateOrderStatus(orderId, 'cancelled');
-          return Response.ok(jsonEncode({'status': true, 'message': 'Payment cancelled'}));
-        } else {
-          return Response.ok(jsonEncode({
-            'status': false,
-            'message': result['error_message'] ?? 'Cancel failed',
-          }));
-        }
-      } catch (e) {
-        print('eSewa /cancel error: $e');
-        return Response.internalServerError();
       }
     });
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { MapPin, CreditCard, Check, ArrowLeft, User, Phone, LogIn } from 'lucide-react';
-import { placeOrder, placeCartOrder, placeSelectedCartOrder, initiateEsewaPayment } from '../api';
+import { placeOrder, placeCartOrder, placeSelectedCartOrder, initiateEsewaPayment } from '../api/index';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -74,10 +74,10 @@ export default function CheckoutPage() {
     };
 
     const res = await initiateEsewaPayment(payload);
-    const { deeplink } = res.data;
+    const { payment_url } = res.data;
 
-    // Redirect browser to eSewa's payment page (works on both desktop and mobile)
-    window.location.href = deeplink;
+    // Redirect browser to eSewa's payment page
+    window.location.href = payment_url;
   };
 
   const handleNonEsewa = async () => {

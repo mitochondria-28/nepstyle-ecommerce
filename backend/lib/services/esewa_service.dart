@@ -1,20 +1,19 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 import 'package:crypto/crypto.dart';
-import 'package:http/http.dart' as http;
 import '../database/db.dart';
 
 class EsewaService {
   final ManagedConnection connection;
 
-  static const String _productCode = 'INTENT';
-  static const String _accessKey = 'LB0REg8HUSw3MTYrI1s6JTE8Kyc6JyAqJiA3MQ==';
-  static const String _bookUrl =
-      'https://rc-checkout.esewa.com.np/api/client/intent/payment/book';
-  static const String _statusUrl =
-      'https://rc-checkout.esewa.com.np/api/client/intent/payment/status';
-  static const String _cancelUrl =
-      'https://rc-checkout.esewa.com.np/api/client/intent/payment/cancel';
+  // eSewa ePay v2 sandbox credentials (publicly documented test values)
+  static const String _productCode = 'EPAYTEST';
+  static const String _secretKey = '8gBm/:&EnhH.1/q';
+  static const String _initiateUrl =
+      'https://rc-epay.esewa.com.np/api/epay/main/v2/form';
+  static const String _verifyUrl =
+      'https://rc.esewa.com.np/api/epay/transaction/status/';
 
   EsewaService(this.connection) {
     _ensureTable();
@@ -25,11 +24,9 @@ class EsewaService {
       CREATE TABLE IF NOT EXISTS esewa_payments (
         id INT AUTO_INCREMENT PRIMARY KEY,
         order_id INT NOT NULL,
-        booking_id VARCHAR(255),
-        correlation_id VARCHAR(255),
-        transaction_uuid VARCHAR(255),
+        transaction_uuid VARCHAR(255) UNIQUE,
         amount DECIMAL(10,2) NOT NULL,
-        status VARCHAR(50) DEFAULT 'BOOKED',
+        status VARCHAR(50) DEFAULT 'INITIATED',
         cart_type VARCHAR(50),
         cart_user_id INT,
         cart_product_ids TEXT,
@@ -40,7 +37,7 @@ class EsewaService {
   }
 
   String _generateSignature(String message) {
-    final keyBytes = utf8.encode(_accessKey);
+    final keyBytes = utf8.encode(_secretKey);
     final messageBytes = utf8.encode(message);
     final hmac = Hmac(sha256, keyBytes);
     final digest = hmac.convert(messageBytes);
@@ -49,136 +46,156 @@ class EsewaService {
 
   String _generateTransactionUuid() {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final random = Random().nextInt(9999);
+    final random = Random().nextInt(99999);
     return 'txn-$timestamp-$random';
   }
 
+  /// POST form data to eSewa ePay v2, follow the redirect manually,
+  /// and return the payment URL from the Location header.
   Future<Map<String, dynamic>> initiatePayment({
     required double amount,
     required int orderId,
-    required String callbackUrl,
-    required String redirectUrl,
-    Map<String, dynamic>? properties,
+    required String successUrl,
+    required String failureUrl,
   }) async {
     final transactionUuid = _generateTransactionUuid();
-    const signedFields = 'product_code,amount,transaction_uuid';
+    final totalAmount = amount.toStringAsFixed(2);
+
     final message =
-        'product_code=$_productCode,amount=$amount,transaction_uuid=$transactionUuid';
+        'total_amount=$totalAmount,transaction_uuid=$transactionUuid,product_code=$_productCode';
     final signature = _generateSignature(message);
 
-    final payload = {
-      'product_code': _productCode,
-      'amount': amount,
+    final formFields = {
+      'amount': totalAmount,
+      'tax_amount': '0',
+      'total_amount': totalAmount,
       'transaction_uuid': transactionUuid,
-      'signed_field_names': signedFields,
+      'product_code': _productCode,
+      'product_service_charge': '0',
+      'product_delivery_charge': '0',
+      'success_url': successUrl,
+      'failure_url': failureUrl,
+      'signed_field_names': 'total_amount,transaction_uuid,product_code',
       'signature': signature,
-      'callback_url': callbackUrl,
-      'redirect_url': redirectUrl,
-      'properties': properties ?? {},
     };
 
+    final body = formFields.entries
+        .map((e) =>
+            '${Uri.encodeQueryComponent(e.key)}=${Uri.encodeQueryComponent(e.value)}')
+        .join('&');
+
+    String? paymentUrl;
     try {
-      final response = await http.post(
-        Uri.parse(_bookUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(payload),
-      );
+      final httpClient = HttpClient();
+      final request = await httpClient.postUrl(Uri.parse(_initiateUrl));
+      request.followRedirects = false;
+      request.headers.set(
+          HttpHeaders.contentTypeHeader, 'application/x-www-form-urlencoded');
+      request.write(body);
 
-      final responseData = jsonDecode(response.body) as Map<String, dynamic>;
+      final response = await request.close();
+      await response.drain();
 
-      if (responseData['code'] == 'IP-201') {
-        final bookingId = responseData['data']['booking_id'] as String;
-        final correlationId = responseData['data']['correlation_id'] as String;
-        final deeplink = responseData['data']['deeplink'] as String;
-
-        await connection.query(
-          '''INSERT INTO esewa_payments
-             (order_id, booking_id, correlation_id, transaction_uuid, amount, status)
-             VALUES (?, ?, ?, ?, ?, 'BOOKED')''',
-          [orderId, bookingId, correlationId, transactionUuid, amount],
-        );
-
-        return {
-          'success': true,
-          'booking_id': bookingId,
-          'correlation_id': correlationId,
-          'deeplink': deeplink,
-        };
-      } else {
-        return {
-          'success': false,
-          'error': responseData['error_message'] ?? 'Failed to initiate payment',
-        };
+      if (response.statusCode == 302 || response.statusCode == 301) {
+        paymentUrl = response.headers.value(HttpHeaders.locationHeader);
       }
+      httpClient.close();
     } catch (e) {
-      print('eSewa book API error: $e');
+      print('eSewa ePay initiate error: $e');
       return {'success': false, 'error': 'Could not reach eSewa service'};
     }
-  }
 
-  Future<Map<String, dynamic>> checkStatus(
-      String bookingId, String correlationId) async {
-    const signedFields = 'booking_id,product_code,correlation_id';
-    final message =
-        'booking_id=$bookingId,product_code=$_productCode,correlation_id=$correlationId';
-    final signature = _generateSignature(message);
-
-    final payload = {
-      'booking_id': bookingId,
-      'product_code': _productCode,
-      'correlation_id': correlationId,
-      'signed_field_names': signedFields,
-      'signature': signature,
-    };
-
-    try {
-      final response = await http.post(
-        Uri.parse(_statusUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(payload),
-      );
-      return jsonDecode(response.body) as Map<String, dynamic>;
-    } catch (e) {
-      print('eSewa status API error: $e');
-      return {'code': 'ERROR', 'error_message': 'Could not reach eSewa service'};
+    if (paymentUrl == null) {
+      return {
+        'success': false,
+        'error': 'eSewa did not return a payment URL'
+      };
     }
-  }
 
-  Future<Map<String, dynamic>> cancelPayment(String bookingId) async {
-    const signedFields = 'booking_id,product_code';
-    final message =
-        'booking_id=$bookingId,product_code=$_productCode';
-    final signature = _generateSignature(message);
-
-    final payload = {
-      'booking_id': bookingId,
-      'product_code': _productCode,
-      'signed_field_names': signedFields,
-      'signature': signature,
-    };
-
-    try {
-      final response = await http.post(
-        Uri.parse(_cancelUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(payload),
-      );
-      return jsonDecode(response.body) as Map<String, dynamic>;
-    } catch (e) {
-      print('eSewa cancel API error: $e');
-      return {'code': 'ERROR', 'error_message': 'Could not reach eSewa service'};
-    }
-  }
-
-  Future<Map<String, dynamic>?> getEsewaPaymentByBookingId(
-      String bookingId) async {
-    var results = await connection.query(
-      'SELECT * FROM esewa_payments WHERE booking_id = ?',
-      [bookingId],
+    // Save to esewa_payments
+    await connection.query(
+      '''INSERT INTO esewa_payments
+         (order_id, transaction_uuid, amount, status)
+         VALUES (?, ?, ?, 'INITIATED')''',
+      [orderId, transactionUuid, amount],
     );
-    if (results.isEmpty) return null;
-    final row = results.first;
-    return _rowToMap(row);
+
+    return {
+      'success': true,
+      'payment_url': paymentUrl,
+      'transaction_uuid': transactionUuid,
+    };
+  }
+
+  /// Verify payment status with eSewa's authoritative status API.
+  Future<Map<String, dynamic>> verifyPayment(int orderId) async {
+    final record = await getEsewaPaymentByOrderId(orderId);
+    if (record == null) {
+      return {'success': false, 'message': 'No payment record found'};
+    }
+
+    final transactionUuid = record['transaction_uuid'] as String;
+    final amount = record['amount'];
+    final totalAmount = (amount is double ? amount : (amount as num).toDouble())
+        .toStringAsFixed(2);
+
+    final uri = Uri.parse(_verifyUrl).replace(queryParameters: {
+      'product_code': _productCode,
+      'total_amount': totalAmount,
+      'transaction_uuid': transactionUuid,
+    });
+
+    try {
+      final httpClient = HttpClient();
+      final request = await httpClient.getUrl(uri);
+      request.headers.set(HttpHeaders.acceptHeader, 'application/json');
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+      httpClient.close();
+
+      final data = jsonDecode(body) as Map<String, dynamic>;
+      final status = data['status'] as String? ?? 'UNKNOWN';
+
+      print('eSewa verify response for order $orderId: $data');
+
+      if (status == 'COMPLETE') {
+        final amountMatches =
+            (data['total_amount'] as num? ?? 0).toDouble() - amount.toDouble() <
+                0.01;
+        final uuidMatches = data['transaction_uuid'] == transactionUuid;
+
+        if (amountMatches && uuidMatches) {
+          await updatePaymentStatus(transactionUuid, 'COMPLETE');
+          await updateOrderStatus(orderId, 'pending');
+          return {'success': true, 'status': 'COMPLETE'};
+        }
+        return {
+          'success': false,
+          'status': 'MISMATCH',
+          'message': 'Amount or transaction ID mismatch'
+        };
+      }
+
+      if (status == 'PENDING' || status == 'AMBIGUOUS') {
+        return {
+          'success': false,
+          'status': status,
+          'message': 'Payment still processing'
+        };
+      }
+
+      // CANCELED, NOT_FOUND, or anything else
+      await updatePaymentStatus(transactionUuid, status);
+      await updateOrderStatus(orderId, 'cancelled');
+      return {
+        'success': false,
+        'status': status,
+        'message': 'Payment not completed'
+      };
+    } catch (e) {
+      print('eSewa verify error: $e');
+      return {'success': false, 'message': 'Could not verify with eSewa'};
+    }
   }
 
   Future<Map<String, dynamic>?> getEsewaPaymentByOrderId(int orderId) async {
@@ -187,25 +204,10 @@ class EsewaService {
       [orderId],
     );
     if (results.isEmpty) return null;
-    return _rowToMap(results.first);
-  }
-
-  Future<Map<String, dynamic>?> getEsewaPaymentByCorrelationId(
-      String correlationId) async {
-    var results = await connection.query(
-      'SELECT * FROM esewa_payments WHERE correlation_id = ?',
-      [correlationId],
-    );
-    if (results.isEmpty) return null;
-    return _rowToMap(results.first);
-  }
-
-  Map<String, dynamic> _rowToMap(dynamic row) {
+    final row = results.first;
     return {
       'id': row['id'],
       'order_id': row['order_id'],
-      'booking_id': row['booking_id'],
-      'correlation_id': row['correlation_id'],
       'transaction_uuid': row['transaction_uuid'],
       'amount': row['amount'],
       'status': row['status'],
@@ -216,7 +218,7 @@ class EsewaService {
   }
 
   Future<void> saveCartInfo(
-    String bookingId,
+    int orderId,
     String cartType,
     int userId,
     String? selectedProductIds,
@@ -224,15 +226,16 @@ class EsewaService {
     await connection.query(
       '''UPDATE esewa_payments
          SET cart_type = ?, cart_user_id = ?, cart_product_ids = ?
-         WHERE booking_id = ?''',
-      [cartType, userId, selectedProductIds, bookingId],
+         WHERE order_id = ?''',
+      [cartType, userId, selectedProductIds, orderId],
     );
   }
 
-  Future<void> updatePaymentStatus(String bookingId, String status) async {
+  Future<void> updatePaymentStatus(
+      String transactionUuid, String status) async {
     await connection.query(
-      'UPDATE esewa_payments SET status = ? WHERE booking_id = ?',
-      [status, bookingId],
+      'UPDATE esewa_payments SET status = ? WHERE transaction_uuid = ?',
+      [status, transactionUuid],
     );
   }
 
@@ -243,8 +246,8 @@ class EsewaService {
     );
   }
 
-  Future<void> clearCartIfNeeded(String bookingId) async {
-    final payment = await getEsewaPaymentByBookingId(bookingId);
+  Future<void> clearCartIfNeeded(int orderId) async {
+    final payment = await getEsewaPaymentByOrderId(orderId);
     if (payment == null) return;
 
     final cartType = payment['cart_type'] as String?;
@@ -258,23 +261,11 @@ class EsewaService {
       if (idsJson != null) {
         final ids = List<int>.from(jsonDecode(idsJson));
         for (final id in ids) {
-          await connection
-              .query('DELETE FROM cart WHERE user_id = ? AND product_id = ?', [userId, id]);
+          await connection.query(
+              'DELETE FROM cart WHERE user_id = ? AND product_id = ?',
+              [userId, id]);
         }
       }
-    }
-  }
-
-  bool verifyCallbackSignature(Map<String, dynamic> data) {
-    try {
-      final signedFieldNames =
-          (data['signed_field_names'] as String).split(',');
-      final message =
-          signedFieldNames.map((f) => '$f=${data[f]}').join(',');
-      final expectedSignature = _generateSignature(message);
-      return data['signature'] == expectedSignature;
-    } catch (_) {
-      return false;
     }
   }
 }
