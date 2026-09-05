@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:crypto/crypto.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 import '../services/esewa_service.dart';
@@ -12,14 +13,30 @@ class EsewaRoutes {
 
   EsewaRoutes(this.esewaService, this.orderService);
 
-  // Backend's own public URL — eSewa redirects the browser here after payment
   static String get _backendUrl =>
       Platform.environment['BACKEND_URL'] ??
       'https://dart-backend-production-359e.up.railway.app';
 
-  // Frontend URL — backend redirects browser here after verifying payment
   static String get _frontendUrl =>
       Platform.environment['FRONTEND_URL'] ?? 'https://nepstyleweb.vercel.app';
+
+  static const String _secretKey = '8gBm/:&EnhH.1/q';
+
+  // Verify the HMAC-SHA256 signature eSewa includes in the data payload.
+  bool _verifyDataSignature(Map<String, dynamic> decoded) {
+    try {
+      final signedFieldNames =
+          (decoded['signed_field_names'] as String).split(',');
+      final message =
+          signedFieldNames.map((f) => '$f=${decoded[f]}').join(',');
+      final expected = base64.encode(
+        Hmac(sha256, utf8.encode(_secretKey)).convert(utf8.encode(message)).bytes,
+      );
+      return decoded['signature'] == expected;
+    } catch (_) {
+      return false;
+    }
+  }
 
   Router get router {
     final r = Router();
@@ -69,10 +86,9 @@ class EsewaRoutes {
           );
         }
 
-        // eSewa redirects browser to these after payment (both success + failure
-        // hit the same verify handler — we never trust eSewa's choice, only the
-        // status API response)
-        final verifyUrl = '$_backendUrl/api/esewa/verify?order_id=$orderId';
+        // Use path param (/verify/<orderId>) so eSewa can safely append ?data=...
+        // without breaking the URL (eSewa always appends ?data=base64 to the URL).
+        final verifyUrl = '$_backendUrl/api/esewa/verify/$orderId';
 
         final esewaResult = await esewaService.initiatePayment(
           amount: order.totalAmount,
@@ -92,7 +108,6 @@ class EsewaRoutes {
           );
         }
 
-        // Store cart metadata for cleanup after successful payment
         if (data['user_id'] != null && cartType != 'direct') {
           final selectedIds = data['selected_product_ids'] != null
               ? jsonEncode(data['selected_product_ids'])
@@ -124,36 +139,57 @@ class EsewaRoutes {
       }
     });
 
-    // GET /api/esewa/verify?order_id=X
-    // eSewa redirects the browser here (both success and failure).
-    // We verify with eSewa's status API, then redirect the browser to frontend.
-    r.get('/verify', (Request request) async {
-      final orderIdStr = request.url.queryParameters['order_id'];
-      final orderId = int.tryParse(orderIdStr ?? '');
+    // GET /api/esewa/verify/<orderId>?data=<base64>
+    // eSewa redirects the browser here after payment (success AND failure).
+    // The ?data= param contains a base64-encoded JSON with status + signature.
+    r.get('/verify/<orderId>', (Request request, String orderId) async {
+      final parsedOrderId = int.tryParse(orderId);
+      if (parsedOrderId == null) {
+        return Response.found(
+            '$_frontendUrl/esewa-return?payment=failed&reason=invalid_order');
+      }
 
-      if (orderId == null) {
-        return Response.found('$_frontendUrl/esewa-return?payment=failed&reason=invalid_order');
+      final dataParam = request.url.queryParameters['data'];
+
+      // No data param means eSewa hit the failure URL without any payload
+      if (dataParam == null || dataParam.isEmpty) {
+        await esewaService.updateOrderStatus(parsedOrderId, 'cancelled');
+        return Response.found(
+            '$_frontendUrl/esewa-return?order_id=$parsedOrderId&payment=failed&reason=canceled');
       }
 
       try {
-        final result = await esewaService.verifyPayment(orderId);
+        final decoded =
+            jsonDecode(utf8.decode(base64.decode(dataParam))) as Map<String, dynamic>;
 
-        if (result['success'] == true) {
-          await esewaService.clearCartIfNeeded(orderId);
+        print('eSewa callback data for order $parsedOrderId: $decoded');
+
+        // Verify HMAC signature to ensure payload is genuine
+        if (!_verifyDataSignature(decoded)) {
+          print('eSewa signature mismatch for order $parsedOrderId');
           return Response.found(
-            '$_frontendUrl/esewa-return?order_id=$orderId&payment=success',
-          );
+              '$_frontendUrl/esewa-return?order_id=$parsedOrderId&payment=failed&reason=invalid_signature');
+        }
+
+        final status = decoded['status'] as String? ?? '';
+
+        if (status == 'COMPLETE') {
+          await esewaService.updatePaymentStatus(
+              decoded['transaction_uuid'] as String, 'COMPLETE');
+          await esewaService.updateOrderStatus(parsedOrderId, 'pending');
+          await esewaService.clearCartIfNeeded(parsedOrderId);
+          return Response.found(
+              '$_frontendUrl/esewa-return?order_id=$parsedOrderId&payment=success');
         } else {
-          final status = (result['status'] as String? ?? 'failed').toLowerCase();
+          final reason = status.toLowerCase().replaceAll(' ', '_');
+          await esewaService.updateOrderStatus(parsedOrderId, 'cancelled');
           return Response.found(
-            '$_frontendUrl/esewa-return?order_id=$orderId&payment=failed&reason=$status',
-          );
+              '$_frontendUrl/esewa-return?order_id=$parsedOrderId&payment=failed&reason=$reason');
         }
       } catch (e) {
-        print('eSewa /verify error: $e');
+        print('eSewa /verify/$orderId error: $e');
         return Response.found(
-          '$_frontendUrl/esewa-return?order_id=$orderId&payment=failed&reason=error',
-        );
+            '$_frontendUrl/esewa-return?order_id=$parsedOrderId&payment=failed&reason=error');
       }
     });
 
