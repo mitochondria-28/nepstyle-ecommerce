@@ -44,14 +44,13 @@ class OrderService {
     }
   }
 
-  // Returns the new order_id, or null on failure. Used by eSewa flow.
   Future<bool> updateOrderStatus(int orderId, String status) async {
     try {
-      var result = await connection.query(
+      await connection.query(
         'UPDATE orders SET order_status = ? WHERE order_id = ?',
         [status, orderId],
       );
-      return result.affectedRows != null && result.affectedRows! > 0;
+      return true;
     } catch (e) {
       print('updateOrderStatus failed: $e');
       return false;
