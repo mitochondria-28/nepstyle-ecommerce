@@ -32,6 +32,8 @@ export const deleteFlashSale = (id) => api.delete(`/flash-sale-products/delete/$
 
 // Orders
 export const fetchAllOrders = () => api.get('/orders/all');
+export const updateOrderStatus = (orderId, status) =>
+  api.put('/orders/update-status', { order_id: orderId, status });
 
 // Reviews
 export const fetchReviews = (productId) =>

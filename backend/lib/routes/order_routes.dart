@@ -119,6 +119,32 @@ class OrderRoutes {
       }
     });
 
+    router.put('/update-status', (Request request) async {
+      try {
+        final payload = await request.readAsString();
+        final data = jsonDecode(payload);
+        final int orderId = data['order_id'];
+        final String status = data['status'];
+
+        const allowed = ['pending', 'confirmed', 'processing', 'delivered', 'cancelled'];
+        if (!allowed.contains(status)) {
+          return Response.badRequest(
+            body: jsonEncode({'status': false, 'message': 'Invalid status value'}),
+          );
+        }
+
+        final success = await orderService.updateOrderStatus(orderId, status);
+        return success
+            ? Response.ok(jsonEncode({'status': true, 'message': 'Order status updated'}))
+            : Response.internalServerError(
+                body: jsonEncode({'status': false, 'message': 'Failed to update status'}));
+      } catch (e) {
+        return Response.internalServerError(
+          body: jsonEncode({'status': false, 'message': 'Error updating order status'}),
+        );
+      }
+    });
+
     return router;
   }
 }
