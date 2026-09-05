@@ -46,7 +46,7 @@ class EsewaRoutes {
           totalAmount: (data['total_amount'] as num).toDouble(),
           paymentMethod: 'eSewa',
           deliveryLocation: data['delivery_location'] as String,
-          orderStatus: 'pending_payment',
+          orderStatus: 'pending',
         );
 
         final orderItems = items
