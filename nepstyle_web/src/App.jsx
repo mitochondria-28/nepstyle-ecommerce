@@ -35,6 +35,7 @@ import SupportPage from './pages/SupportPage';
 import DealsPage from './pages/DealsPage';
 import CollectionsPage from './pages/CollectionsPage';
 import StyleQuizPage from './pages/StyleQuizPage';
+import EsewaReturnPage from './pages/EsewaReturnPage';
 
 function Layout({ children }) {
   return (
@@ -82,6 +83,7 @@ export default function App() {
               <Route path="/cart" element={<Layout><CartPage /></Layout>} />
               <Route path="/wishlist" element={<Layout><WishlistPage /></Layout>} />
               <Route path="/checkout" element={<Layout><CheckoutPage /></Layout>} />
+              <Route path="/esewa-return" element={<Layout><EsewaReturnPage /></Layout>} />
               <Route path="/profile" element={<Layout><ProtectedRoute><ProfilePage /></ProtectedRoute></Layout>} />
               <Route path="/profile/edit" element={<Layout><ProtectedRoute><MyProfilePage /></ProtectedRoute></Layout>} />
               <Route path="/profile/change-password" element={<Layout><ProtectedRoute><ChangePasswordPage /></ProtectedRoute></Layout>} />

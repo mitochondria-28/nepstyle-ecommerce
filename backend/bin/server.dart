@@ -11,6 +11,7 @@ import 'package:nepstyle_cms/routes/review_routes.dart';
 import 'package:nepstyle_cms/routes/user_routes.dart';
 import 'package:nepstyle_cms/routes/category_routes.dart'; // Import category routes
 import 'package:nepstyle_cms/routes/wishlist_routes.dart';
+import 'package:nepstyle_cms/routes/esewa_routes.dart';
 import 'package:nepstyle_cms/services/admin_service.dart';
 import 'package:nepstyle_cms/services/brands_service.dart';
 import 'package:nepstyle_cms/services/cart_service.dart';
@@ -23,6 +24,7 @@ import 'package:nepstyle_cms/services/review_service.dart';
 import 'package:nepstyle_cms/services/user_service.dart';
 import 'package:nepstyle_cms/services/category_service.dart'; // Import category service
 import 'package:nepstyle_cms/services/wishlist_service.dart';
+import 'package:nepstyle_cms/services/esewa_service.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as io;
 import 'package:shelf_router/shelf_router.dart';
@@ -73,6 +75,7 @@ Future<void> main() async {
     final wishlistService = WishlistService(connection);
     final homeService = HomeService(connection, productService);
     final orderService = OrderService(connection);
+    final esewaService = EsewaService(connection);
     final reviewService = ReviewService(connection);
     // Initialize routes
     final adminRoutes = AdminRoutes(adminService);
@@ -88,6 +91,7 @@ Future<void> main() async {
     final wishlistRoutes = WishlistRoutes(wishlistService);
     final homeRoutes = HomeRoutes(homeService);
     final orderRoutes = OrderRoutes(orderService);
+    final esewaRoutes = EsewaRoutes(esewaService, orderService);
     final reviewRoutes = ReviewRoutes(reviewService);
     // Create router and mount routes
     final app = Router();
@@ -102,6 +106,7 @@ Future<void> main() async {
     app.mount('/api/carts/', cartRoutes.router);
     app.mount('/api/wishlists/', wishlistRoutes.router);
     app.mount('/api/orders/', orderRoutes.router);
+    app.mount('/api/esewa/', esewaRoutes.router);
     app.mount('/api/reviews/',
         reviewRoutes.router); // Mount review routes (new line, handler)
 

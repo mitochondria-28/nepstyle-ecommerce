@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { MapPin, CreditCard, Check, ArrowLeft, User, Phone, LogIn } from 'lucide-react';
-import { placeOrder, placeCartOrder, placeSelectedCartOrder } from '../api';
+import { placeOrder, placeCartOrder, placeSelectedCartOrder, initiateEsewaPayment } from '../api';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -40,6 +40,80 @@ export default function CheckoutPage() {
     );
   }
 
+  const buildOrderItems = () => {
+    if (isBuyNow) {
+      return [{
+        product_id: product.product_id ?? product.productId,
+        quantity,
+        price: product.sell_price ?? product.sellPrice,
+      }];
+    }
+    return (cartItems || []).map((item) => ({
+      product_id: item.product_id ?? item.productId,
+      quantity: item.quantity,
+      price: item.sell_price ?? item.sellPrice,
+    }));
+  };
+
+  const handleEsewa = async () => {
+    const items = buildOrderItems();
+    let cartType = 'direct';
+    if (!isBuyNow) {
+      cartType = isSelectAll ? 'cart_all' : 'cart_selected';
+    }
+
+    const payload = {
+      user_id:           user?.user_id ?? null,
+      guest_name:        !user ? guestName.trim()  : null,
+      guest_phone:       !user ? guestPhone.trim() : null,
+      total_amount:      Number(totalAmount),
+      delivery_location: location,
+      cart_type:         cartType,
+      items,
+      ...(cartType === 'cart_selected' && { selected_product_ids: selectedProductIds }),
+    };
+
+    const res = await initiateEsewaPayment(payload);
+    const { deeplink } = res.data;
+
+    // Redirect browser to eSewa's payment page (works on both desktop and mobile)
+    window.location.href = deeplink;
+  };
+
+  const handleNonEsewa = async () => {
+    let res;
+    if (isBuyNow) {
+      res = await placeOrder({
+        user_id:           user?.user_id ?? null,
+        guest_name:        !user ? guestName.trim()  : null,
+        guest_phone:       !user ? guestPhone.trim() : null,
+        total_amount:      Number(totalAmount),
+        payment_method:    paymentMethod,
+        delivery_location: location,
+        items: [{
+          product_id: product.product_id ?? product.productId,
+          quantity,
+          price: product.sell_price ?? product.sellPrice,
+        }],
+      });
+    } else if (isSelectAll) {
+      res = await placeCartOrder({
+        user_id: user.user_id, payment_method: paymentMethod, delivery_location: location,
+      });
+    } else {
+      res = await placeSelectedCartOrder({
+        user_id: user.user_id, product_ids: selectedProductIds,
+        payment_method: paymentMethod, delivery_location: location,
+      });
+    }
+
+    if (res.data.status) {
+      setSuccess(true);
+    } else {
+      toast.error('Failed to place order');
+    }
+  };
+
   const handleConfirm = async () => {
     if (!paymentMethod) { toast.error('Please select a payment method'); return; }
     if (!location)      { toast.error('Please select a delivery location'); return; }
@@ -54,36 +128,11 @@ export default function CheckoutPage() {
 
     setLoading(true);
     try {
-      let res;
-      if (isBuyNow) {
-        res = await placeOrder({
-          user_id:           user?.user_id ?? null,
-          guest_name:        !user ? guestName.trim()  : null,
-          guest_phone:       !user ? guestPhone.trim() : null,
-          total_amount:      Number(totalAmount),
-          payment_method:    paymentMethod,
-          delivery_location: location,
-          items: [{
-            product_id: product.product_id ?? product.productId,
-            quantity,
-            price: product.sell_price ?? product.sellPrice,
-          }],
-        });
-      } else if (isSelectAll) {
-        res = await placeCartOrder({
-          user_id: user.user_id, payment_method: paymentMethod, delivery_location: location,
-        });
+      if (paymentMethod === 'eSewa') {
+        await handleEsewa();
+        // Redirect happens inside — no further state update needed
       } else {
-        res = await placeSelectedCartOrder({
-          user_id: user.user_id, product_ids: selectedProductIds,
-          payment_method: paymentMethod, delivery_location: location,
-        });
-      }
-
-      if (res.data.status) {
-        setSuccess(true);
-      } else {
-        toast.error('Failed to place order');
+        await handleNonEsewa();
       }
     } catch {
       toast.error('Failed to place order. Please try again.');
@@ -230,6 +279,12 @@ export default function CheckoutPage() {
                 </button>
               ))}
             </div>
+            {paymentMethod === 'eSewa' && (
+              <p className="text-xs text-gray-400 mt-3 flex items-center gap-1.5">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-400" />
+                You'll be redirected to eSewa to complete payment securely.
+              </p>
+            )}
           </div>
         </div>
 
@@ -262,7 +317,9 @@ export default function CheckoutPage() {
               disabled={loading || !paymentMethod || !location}
               className="w-full btn-primary py-3.5 rounded-xl mt-5 text-base disabled:opacity-50"
             >
-              {loading ? 'Placing Order...' : 'Confirm Order'}
+              {loading
+                ? (paymentMethod === 'eSewa' ? 'Redirecting to eSewa...' : 'Placing Order...')
+                : (paymentMethod === 'eSewa' ? 'Pay with eSewa' : 'Confirm Order')}
             </button>
           </div>
         </div>

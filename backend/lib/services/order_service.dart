@@ -30,6 +30,40 @@ class OrderService {
     }
   }
 
+  // Returns the new order_id, or null on failure. Used by eSewa flow.
+  Future<int?> placeOrderAndReturnId(Order order, List<OrderItem> items) async {
+    try {
+      var orderResult = await connection.query(
+        '''INSERT INTO orders
+           (user_id, guest_name, guest_phone, total_amount, payment_method,
+            delivery_location, order_status)
+           VALUES (?, ?, ?, ?, ?, ?, ?)''',
+        [
+          order.userId,
+          order.guestName,
+          order.guestPhone,
+          order.totalAmount,
+          order.paymentMethod,
+          order.deliveryLocation,
+          order.orderStatus,
+        ],
+      );
+      final orderId = orderResult.insertId!;
+
+      for (var item in items) {
+        await connection.query(
+          'INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)',
+          [orderId, item.productId, item.quantity, item.price],
+        );
+      }
+
+      return orderId;
+    } catch (e) {
+      print("placeOrderAndReturnId failed: $e");
+      return null;
+    }
+  }
+
   Future<bool> placeCustomOrder(int userId, List<Map<String, dynamic>> products, String paymentMethod, String deliveryLocation) async {
     try {
       double totalAmount = 0;

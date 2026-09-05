@@ -49,3 +49,8 @@ export const fetchAllOrders = () => api.get('/orders/all');
 // Reviews
 export const addReview = (data) => api.post('/reviews/add', data);
 export const fetchReviews = (productId) => api.get(`/reviews/list?product_id=${productId}`);
+
+// eSewa Intent Payment
+export const initiateEsewaPayment = (data) => api.post('/esewa/initiate', data);
+export const verifyEsewaPayment = (data) => api.post('/esewa/verify', data);
+export const cancelEsewaPayment = (data) => api.post('/esewa/cancel', data);
