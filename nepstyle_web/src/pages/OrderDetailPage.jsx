@@ -1,7 +1,23 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, MapPin, CreditCard, Package } from 'lucide-react';
 
-const STATUS_STEPS = ['Pending', 'Processing', 'Shipped', 'Delivered'];
+const STATUS_STEPS = ['pending', 'confirmed', 'processing', 'delivered'];
+
+const STATUS_LABELS = {
+  pending:    'Pending',
+  confirmed:  'Confirmed',
+  processing: 'Processing',
+  delivered:  'Delivered',
+  cancelled:  'Cancelled',
+};
+
+const STATUS_CONFIG = {
+  pending:    { cls: 'bg-amber-100 text-amber-700' },
+  confirmed:  { cls: 'bg-blue-100 text-blue-700' },
+  processing: { cls: 'bg-indigo-100 text-indigo-700' },
+  delivered:  { cls: 'bg-green-100 text-green-700' },
+  cancelled:  { cls: 'bg-red-100 text-red-700' },
+};
 
 export default function OrderDetailPage() {
   const { state } = useLocation();
@@ -10,36 +26,71 @@ export default function OrderDetailPage() {
 
   if (!order) { navigate('/orders'); return null; }
 
-  const currentStep = STATUS_STEPS.findIndex((s) => s.toLowerCase() === order.status?.toLowerCase());
+  const statusKey  = order.order_status?.toLowerCase() || 'pending';
+  const isCancelled = statusKey === 'cancelled';
+  const currentStep = STATUS_STEPS.indexOf(statusKey);
+  const statusCfg  = STATUS_CONFIG[statusKey] || STATUS_CONFIG.pending;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
       <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-primary2 mb-6 hover:text-primary">
         <ArrowLeft size={18} /> Back
       </button>
+
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-primary">Order #{order.order_id}</h1>
-        <span className="text-sm text-gray-400">{new Date(order.created_at || order.order_date).toLocaleDateString()}</span>
+        <div className="flex items-center gap-2">
+          <span className={`text-xs px-3 py-1 rounded-full font-semibold ${statusCfg.cls}`}>
+            {STATUS_LABELS[statusKey] || statusKey}
+          </span>
+          <span className="text-sm text-gray-400">
+            {new Date(order.created_at || order.order_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+          </span>
+        </div>
       </div>
 
       {/* Status Tracker */}
       <div className="bg-white rounded-2xl shadow-sm p-5 mb-4">
         <h3 className="font-bold text-primary mb-4">Order Status</h3>
-        <div className="flex items-center justify-between relative">
-          <div className="absolute top-3 left-0 right-0 h-0.5 bg-gray-200 z-0" />
-          <div
-            className="absolute top-3 left-0 h-0.5 bg-primary z-0 transition-all"
-            style={{ width: `${(Math.max(0, currentStep) / (STATUS_STEPS.length - 1)) * 100}%` }}
-          />
-          {STATUS_STEPS.map((step, i) => (
-            <div key={step} className="flex flex-col items-center relative z-10">
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${i <= currentStep ? 'bg-primary text-white' : 'bg-gray-200 text-gray-400'}`}>
-                {i < currentStep ? '✓' : i + 1}
-              </div>
-              <span className={`text-xs mt-1 font-medium ${i <= currentStep ? 'text-primary' : 'text-gray-400'}`}>{step}</span>
+
+        {isCancelled ? (
+          <div className="flex items-center gap-3 py-2">
+            <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-500 font-bold text-sm">✕</div>
+            <div>
+              <p className="text-sm font-semibold text-red-600">Order Cancelled</p>
+              <p className="text-xs text-gray-400">This order was cancelled.</p>
             </div>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between relative">
+            {/* background track */}
+            <div className="absolute top-3.5 left-0 right-0 h-0.5 bg-gray-200 z-0" />
+            {/* progress fill */}
+            <div
+              className="absolute top-3.5 left-0 h-0.5 bg-primary z-0 transition-all duration-500"
+              style={{
+                width: currentStep < 0
+                  ? '0%'
+                  : `${(currentStep / (STATUS_STEPS.length - 1)) * 100}%`,
+              }}
+            />
+            {STATUS_STEPS.map((step, i) => {
+              const done   = i < currentStep;
+              const active = i === currentStep;
+              return (
+                <div key={step} className="flex flex-col items-center relative z-10">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all
+                    ${done || active ? 'bg-primary text-white' : 'bg-gray-200 text-gray-400'}`}>
+                    {done ? '✓' : i + 1}
+                  </div>
+                  <span className={`text-[11px] mt-1.5 font-medium text-center ${done || active ? 'text-primary' : 'text-gray-400'}`}>
+                    {STATUS_LABELS[step]}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Order Info */}

@@ -6,12 +6,12 @@ import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 import AIOrderAssistant from '../components/AIOrderAssistant';
 
-const STATUS_COLORS = {
-  pending: 'bg-yellow-100 text-yellow-700',
-  processing: 'bg-blue-100 text-blue-700',
-  shipped: 'bg-purple-100 text-purple-700',
-  delivered: 'bg-green-100 text-green-700',
-  cancelled: 'bg-red-100 text-red-700',
+const STATUS_CONFIG = {
+  pending:    { label: 'Pending',    cls: 'bg-amber-100 text-amber-700',    dot: '🟡' },
+  confirmed:  { label: 'Confirmed',  cls: 'bg-blue-100 text-blue-700',      dot: '🔵' },
+  processing: { label: 'Processing', cls: 'bg-indigo-100 text-indigo-700',  dot: '🔷' },
+  delivered:  { label: 'Delivered',  cls: 'bg-green-100 text-green-700',    dot: '🟢' },
+  cancelled:  { label: 'Cancelled',  cls: 'bg-red-100 text-red-700',        dot: '🔴' },
 };
 
 export default function OrderListPage() {
@@ -74,9 +74,15 @@ export default function OrderListPage() {
                     <p className="font-semibold text-primary text-sm">Order #{order.order_id}</p>
                     <p className="text-xs text-gray-400 mt-0.5">{new Date(order.created_at || order.order_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
                   </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[order.status?.toLowerCase()] || 'bg-gray-100 text-gray-600'}`}>
-                    {order.status || 'Pending'}
-                  </span>
+                  {(() => {
+                    const key = order.order_status?.toLowerCase() || 'pending';
+                    const cfg = STATUS_CONFIG[key] || STATUS_CONFIG.pending;
+                    return (
+                      <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${cfg.cls}`}>
+                        {cfg.label}
+                      </span>
+                    );
+                  })()}
                 </div>
                 <div className="flex items-center justify-between mt-2">
                   <p className="text-xs text-gray-500">{order.payment_method}</p>
